@@ -7,13 +7,8 @@
 //============================================================================
 
 #include <iostream>
-#include "ServerSocket.h"
-#include "Controller.h"
-
-using namespace std;
-using namespace vivo;
-
 #include <memory>
+#include <stdio.h>
 #include <event2/event-config.h>
 #include <event2/event.h>
 #include <event2/event_struct.h>
@@ -25,16 +20,14 @@ using namespace vivo;
 #include <string.h>
 
 #include "Server.h"
-
-#include <stdio.h>
-#include <iostream>
-
 #include "utils/events.h"
+#include "Handler.h"
+#include "Message.h"
 
 using namespace std;
 using namespace vivo;
 
-
+#if 0
 typedef void (*f_signal)(evutil_socket_t, short, void *);
 static void
 signal_cb(evutil_socket_t sig, short events, void *ctx)
@@ -83,3 +76,55 @@ int main(int argc, char **argv)
     return 0;
 }
 
+#else
+
+class myHandler : public Handler{
+	virtual void handleMessage(Message& msg) override {
+		Handler::handleMessage(msg);
+		switch(msg.m_what){
+		case 0:
+
+			break;
+
+		case 1:
+			break;
+
+		case 2:
+			break;
+
+		case 3:
+			break;
+
+		case 4:
+			break;
+
+		case 5:
+			break;
+
+		default:
+			break;
+		}
+
+		cout << "IN myHandler case: " << msg.m_what << endl;
+	}
+};
+int main(int argc, char **argv)
+{
+	cout << "IN main" << endl;
+
+	myHandler hdlr;
+	for(int i = 0; i < 6; i++){
+		hdlr.sendEmptyMessage(i, 100 * i);
+	}
+
+	hdlr.postAtTime([](){
+		cout << "IN POST call back" << endl;
+	}, 230);
+
+	hdlr.stopSafty(true);
+	while(true){
+		std::this_thread::sleep_for(std::chrono::seconds(100000));
+	}
+	return 1;
+}
+#endif
