@@ -70,14 +70,16 @@ int main(int argc, char **argv)
     }
 
 
+    /*
+     * 起已个线程 监听客户端连接
+     */
     std::thread acceptorThread([&raii_base](){
 
     	event_base_dispatch(raii_base.get());
-    	cout << "work_thread exit" << endl;
+    	cout << "acceptorThread exit" << endl;
     });
 
     acceptorThread.join();
-//	event_base_dispatch(raii_base.get());
 
 //    ptr_acceptor = nullptr; //提前释放acceptor raii
     ptr_acceptor.reset(); //提前释放acceptor raii
