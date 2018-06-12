@@ -14,6 +14,7 @@
 #include <event2/event.h>
 #include <event2/listener.h>
 #include <event2/bufferevent.h>
+#include <iostream>
 
 #define MAKE_RAII(type) \
 /* deleter */\

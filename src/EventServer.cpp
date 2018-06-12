@@ -1,9 +1,9 @@
 //============================================================================
-// Name        : Helloword.cpp
+// Name        : EventSever.cpp
 // Author      : liyunfei
 // Version     :
 // Copyright   : Your copyright notice
-// Description : Hello World in C++, Ansi-style
+// Description : EventSever in C++, Ansi-style
 //============================================================================
 
 #include <iostream>
@@ -19,15 +19,16 @@
 #include <errno.h>
 #include <string.h>
 
-#include "Server.h"
 #include "utils/events.h"
 #include "Handler.h"
 #include "Message.h"
 
 using namespace std;
-using namespace vivo;
 
-#if 0
+
+#if 1
+#include "ClientSocketAcceptor.h"
+
 typedef void (*f_signal)(evutil_socket_t, short, void *);
 static void
 signal_cb(evutil_socket_t sig, short events, void *ctx)
@@ -40,29 +41,22 @@ signal_cb(evutil_socket_t sig, short events, void *ctx)
 	event_base_loopexit(base, &delay);
 }
 
-class Signal{
-private:
-	struct event_base *mBase;
-	raii_event mRaii_signal_event;
-public:
-	Signal(struct event_base *base):mBase(base){}
-	~Signal(){}
-};
-
 int main(int argc, char **argv)
 {
 	auto flags = EV_SIGNAL|EV_PERSIST;
-//	struct sockaddr_in sin;
-//
-//	memset(&sin, 0, sizeof(sin));
-//	sin.sin_family = AF_INET;
-//	sin.sin_port = htons(9950);
+	struct sockaddr_in sin;
+
+	memset(&sin, 0, sizeof(sin));
+	sin.sin_family = AF_INET;
+	sin.sin_port = htons(9950);
 
     // Obtain event base
     auto raii_base = obtain_event_base();
 
-    std::unique_ptr<Server> ptr_server = make_unique<Server>(raii_base.get(), 9950);
-    ptr_server.get()->start_server();
+    std::unique_ptr<ClientSocketAcceptor> ptr_acceptor = make_unique<ClientSocketAcceptor>();
+
+	auto raii_listener = obtain_evconnlistener(raii_base.get(), ClientSocketAcceptor::connectionListener, (void*)ptr_acceptor.get(),
+		    LEV_OPT_REUSEABLE|LEV_OPT_CLOSE_ON_FREE, -1, (struct sockaddr*)&sin, sizeof(sin));
 
 	f_signal f = signal_cb;
     auto raii_signal_event = obtain_event(raii_base.get(), SIGINT, flags, f, (void*)raii_base.get());
@@ -71,12 +65,20 @@ int main(int argc, char **argv)
 		return 1;
     }
 
-	event_base_dispatch(raii_base.get());
 
+    std::thread work_thread([&raii_base](){
+
+    	event_base_dispatch(raii_base.get());
+    	cout << "work_thread exit" << endl;
+    });
+
+    work_thread.join();
+//	event_base_dispatch(raii_base.get());
+
+    cout << "main thread exit" << endl;
     return 0;
 }
-
-#else
+#elif 0
 
 class myHandler : public Handler{
 	virtual void handleMessage(Message& msg) override {
@@ -126,5 +128,35 @@ int main(int argc, char **argv)
 		std::this_thread::sleep_for(std::chrono::seconds(100000));
 	}
 	return 1;
+}
+#elif 0
+#include <iostream>
+#include <vector>
+#include <chrono>
+
+#include "ThreadPool.h"
+
+int main()
+{
+
+    ThreadPool pool(4);
+    std::vector< std::future<int> > results;
+
+    for(int i = 0; i < 8; ++i) {
+        results.emplace_back(
+            pool.enqueue([i] {
+                std::cout << "hello " << i << std::endl;
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+                std::cout << "world " << i << std::endl;
+                return i*i;
+            })
+        );
+    }
+
+    for(auto && result: results)
+        std::cout << result.get() << ' ';
+    std::cout << std::endl;
+
+    return 0;
 }
 #endif
