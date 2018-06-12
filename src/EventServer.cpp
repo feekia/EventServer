@@ -36,7 +36,7 @@ signal_cb(evutil_socket_t sig, short events, void *ctx)
 	struct event_base *base = (struct event_base *)ctx;
 	struct timeval delay = { 2, 0 };
 
-	cout << "Caught an interrupt signal; exiting cleanly in two seconds." << endl;
+	cout << "Caught an interrupt signal; exiting cleanly in two seconds. sig:" << sig << endl;
 
 	event_base_loopexit(base, &delay);
 }
@@ -55,6 +55,10 @@ int main(int argc, char **argv)
 
     std::unique_ptr<ClientSocketAcceptor> ptr_acceptor = make_unique<ClientSocketAcceptor>();
 
+    /*
+     * 监听客户端socket链接，
+     * 通过回调connectionListener将客户端的socket fd存储起来
+     */
 	auto raii_listener = obtain_evconnlistener(raii_base.get(), ClientSocketAcceptor::connectionListener, (void*)ptr_acceptor.get(),
 		    LEV_OPT_REUSEABLE|LEV_OPT_CLOSE_ON_FREE, -1, (struct sockaddr*)&sin, sizeof(sin));
 
@@ -66,14 +70,19 @@ int main(int argc, char **argv)
     }
 
 
-    std::thread work_thread([&raii_base](){
+    std::thread acceptorThread([&raii_base](){
 
     	event_base_dispatch(raii_base.get());
     	cout << "work_thread exit" << endl;
     });
 
-    work_thread.join();
+    acceptorThread.join();
 //	event_base_dispatch(raii_base.get());
+
+//    ptr_acceptor = nullptr; //提前释放acceptor raii
+    ptr_acceptor.reset(); //提前释放acceptor raii
+    while(true)
+    	std::this_thread::sleep_for(std::chrono::seconds(1000));
 
     cout << "main thread exit" << endl;
     return 0;
