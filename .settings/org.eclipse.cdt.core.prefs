@@ -1,9 +1,0 @@
-eclipse.preferences.version=1
-environment/project/cdt.managedbuild.config.gnu.cygwin.exe.debug.1740363235/CPLUS_INCLUDE_PATH/delimiter=;
-environment/project/cdt.managedbuild.config.gnu.cygwin.exe.debug.1740363235/CPLUS_INCLUDE_PATH/operation=replace
-environment/project/cdt.managedbuild.config.gnu.cygwin.exe.debug.1740363235/CPLUS_INCLUDE_PATH/value=C\:\\cygwin64\\lib\\gcc\\x86_64-w64-mingw32\\5.4.0\\include\\c++
-environment/project/cdt.managedbuild.config.gnu.cygwin.exe.debug.1740363235/C_INCLUDE_PATH/delimiter=;
-environment/project/cdt.managedbuild.config.gnu.cygwin.exe.debug.1740363235/C_INCLUDE_PATH/operation=replace
-environment/project/cdt.managedbuild.config.gnu.cygwin.exe.debug.1740363235/C_INCLUDE_PATH/value=C\:\\cygwin64\\usr\\include
-environment/project/cdt.managedbuild.config.gnu.cygwin.exe.debug.1740363235/append=true
-environment/project/cdt.managedbuild.config.gnu.cygwin.exe.debug.1740363235/appendContributed=true

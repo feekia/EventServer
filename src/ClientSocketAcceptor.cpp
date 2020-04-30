@@ -12,11 +12,10 @@
 
 #include <event2/event.h>
 #include <event2/listener.h>
-#include "utils/events.h"
 
 #include "ThreadPool.h"
-#include "utils/events.h"
-#include "utils/wrapper.h"
+#include "events.h"
+#include "wrapper.h"
 #include "ClientSocketAcceptor.h"
 
 using namespace std;
