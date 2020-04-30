@@ -7,3 +7,4 @@
 *.sql linguist-language=C++
 *.uml linguist-language=C++ 
 *.cmd linguist-language=C++ 
+*.cpp linguist-language=C++
