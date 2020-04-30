@@ -6,6 +6,8 @@ libevent开发server端
 
 ## 编译
 ./once.sh
+
 make
+
 ## 执行
 ./src/EventServer
