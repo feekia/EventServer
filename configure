@@ -2770,9 +2770,8 @@ fi
 
 
 # Define the identity of the package.
-
- PACKAGE=EventServer
- VERSION=1.0
+ PACKAGE='full-package-name'
+ VERSION='VERSION'
 
 
 cat >>confdefs.h <<_ACEOF

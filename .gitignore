@@ -2,3 +2,4 @@ si
 .deps
 *.o
 autoscan.log
+.vscode
