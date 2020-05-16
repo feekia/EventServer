@@ -5,9 +5,11 @@ libevent开发server端
 3.libevent 多线程io
 
 ## 编译
-./once.sh
-
+./autofen.sh
+./configure
 make
 
 ## 执行
 ./src/EventServer
+
+afreeliyunfeil@163.com
