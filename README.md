@@ -20,4 +20,6 @@ make distclean
 
 ./src/client/EventClient
 
-afreeliyunfeil@163.com
+说明：echo服务器简单实现
+
+author：afreeliyunfeil@163.com
