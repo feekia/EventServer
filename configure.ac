@@ -4,7 +4,8 @@
 AC_PREREQ([2.69])
 AC_INIT([FULL-PACKAGE-NAME], [VERSION], [BUG-REPORT-ADDRESS])
 AM_INIT_AUTOMAKE(1.0) 
-AC_CONFIG_SRCDIR([./src/EventServer.cpp])
+AC_CONFIG_SRCDIR([./src/server/EventServer.cpp])
+AC_CONFIG_SRCDIR([./src/client/Client.cpp])
 AC_CONFIG_HEADERS([config.h])
 
 # Checks for programs.
@@ -24,5 +25,5 @@ AC_TYPE_SIZE_T
 # Checks for library functions.
 AC_CHECK_FUNCS([memset])
 
-AC_CONFIG_FILES([Makefile src/Makefile])
+AC_CONFIG_FILES([Makefile src/server/Makefile src/client/Makefile])
 AC_OUTPUT

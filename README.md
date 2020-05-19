@@ -6,10 +6,18 @@ libevent开发server端
 
 ## 编译
 ./autofen.sh
+
 ./configure
+
 make
 
+## clean
+
+make distclean
+
 ## 执行
-./src/EventServer
+./src/server/EventServer
+
+./src/client/EventClient
 
 afreeliyunfeil@163.com

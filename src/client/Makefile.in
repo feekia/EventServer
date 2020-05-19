@@ -86,8 +86,8 @@ POST_INSTALL = :
 NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
-bin_PROGRAMS = EventServer$(EXEEXT)
-subdir = src
+bin_PROGRAMS = EventClient$(EXEEXT)
+subdir = src/client
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
@@ -99,13 +99,11 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
-am_EventServer_OBJECTS = ClientSocketAcceptor.$(OBJEXT) \
-	Handler.$(OBJEXT) Message.$(OBJEXT) ThreadPool.$(OBJEXT) \
-	EventServer.$(OBJEXT)
-EventServer_OBJECTS = $(am_EventServer_OBJECTS)
-EventServer_LDADD = $(LDADD)
-EventServer_LINK = $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) \
-	$(EventServer_LDFLAGS) $(LDFLAGS) -o $@
+am_EventClient_OBJECTS = Client.$(OBJEXT)
+EventClient_OBJECTS = $(am_EventClient_OBJECTS)
+EventClient_LDADD = $(LDADD)
+EventClient_LINK = $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) \
+	$(EventClient_LDFLAGS) $(LDFLAGS) -o $@
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -135,8 +133,8 @@ AM_V_CXXLD = $(am__v_CXXLD_@AM_V@)
 am__v_CXXLD_ = $(am__v_CXXLD_@AM_DEFAULT_V@)
 am__v_CXXLD_0 = @echo "  CXXLD   " $@;
 am__v_CXXLD_1 = 
-SOURCES = $(EventServer_SOURCES)
-DIST_SOURCES = $(EventServer_SOURCES)
+SOURCES = $(EventClient_SOURCES)
+DIST_SOURCES = $(EventClient_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -177,7 +175,7 @@ CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CXX = @CXX@
 CXXDEPMODE = @CXXDEPMODE@
-CXXFLAGS = @CXXFLAGS@ -g -Wall -I ../include -std=gnu++14
+CXXFLAGS = @CXXFLAGS@ -g -Wall -I ../../include -std=gnu++14
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
@@ -256,8 +254,8 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AUTOMAKE_OPTIONS = foreign  
-EventServer_SOURCES = ClientSocketAcceptor.cpp Handler.cpp Message.cpp ThreadPool.cpp EventServer.cpp
-EventServer_LDFLAGS = 
+EventClient_SOURCES = Client.cpp
+EventClient_LDFLAGS = 
 all: all-am
 
 .SUFFIXES:
@@ -271,9 +269,9 @@ $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign src/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign src/client/Makefile'; \
 	$(am__cd) $(top_srcdir) && \
-	  $(AUTOMAKE) --foreign src/Makefile
+	  $(AUTOMAKE) --foreign src/client/Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \
 	  *config.status*) \
@@ -334,9 +332,9 @@ uninstall-binPROGRAMS:
 clean-binPROGRAMS:
 	-test -z "$(bin_PROGRAMS)" || rm -f $(bin_PROGRAMS)
 
-EventServer$(EXEEXT): $(EventServer_OBJECTS) $(EventServer_DEPENDENCIES) $(EXTRA_EventServer_DEPENDENCIES) 
-	@rm -f EventServer$(EXEEXT)
-	$(AM_V_CXXLD)$(EventServer_LINK) $(EventServer_OBJECTS) $(EventServer_LDADD) $(LIBS)
+EventClient$(EXEEXT): $(EventClient_OBJECTS) $(EventClient_DEPENDENCIES) $(EXTRA_EventClient_DEPENDENCIES) 
+	@rm -f EventClient$(EXEEXT)
+	$(AM_V_CXXLD)$(EventClient_LINK) $(EventClient_OBJECTS) $(EventClient_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -344,11 +342,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ClientSocketAcceptor.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/EventServer.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Handler.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Message.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ThreadPool.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Client.Po@am__quote@
 
 .cpp.o:
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<

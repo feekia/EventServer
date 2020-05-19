@@ -1,6 +1,6 @@
 //============================================================================
 // Name        : EventSever.cpp
-// Author      : liyunfei
+// Author      : liyunfei   afreeliyunfeil@163.com
 // Version     :
 // Copyright   : Your copyright notice
 // Description : EventSever in C++, Ansi-style
