@@ -25,5 +25,5 @@ AC_TYPE_SIZE_T
 # Checks for library functions.
 AC_CHECK_FUNCS([memset])
 
-AC_CONFIG_FILES([Makefile src/server/Makefile src/client/Makefile])
+AC_CONFIG_FILES([Makefile src/server/Makefile src/client/Makefile src/test/Makefile])
 AC_OUTPUT

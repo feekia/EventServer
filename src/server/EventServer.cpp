@@ -19,7 +19,7 @@
 #include <errno.h>
 #include <string.h>
 #include <signal.h>
-
+#include <event2/thread.h>
 
 #include "events.h"
 #include "Handler.h"
@@ -51,7 +51,7 @@ int main(int argc, char **argv)
 	memset(&sin, 0, sizeof(sin));
 	sin.sin_family = AF_INET;
 	sin.sin_port = htons(9950);
-
+	evthread_use_pthreads();
     // Obtain event base
     auto raii_base = obtain_event_base();
 
@@ -66,7 +66,7 @@ int main(int argc, char **argv)
 
 	f_signal f = signal_cb;
     auto raii_signal_event = obtain_event(raii_base.get(), SIGINT, flags, f, (void*)raii_base.get());
-    if(!raii_signal_event.get() || event_add(raii_signal_event.get(),nullptr) < 0){
+    if(!raii_signal_event.get()  || event_add(raii_signal_event.get(), nullptr) < 0){
 		cout << "Could not create/add a signal event!" << endl;
 		return 1;
     }
@@ -83,9 +83,7 @@ int main(int argc, char **argv)
     acceptorThread.join();
 
 //    ptr_acceptor = nullptr; //提前释放acceptor raii
-    ptr_acceptor.reset(); //提前释放acceptor raii
-    while(true)
-    	std::this_thread::sleep_for(std::chrono::seconds(1000));
+    // ptr_acceptor.reset(); //提前释放acceptor raii
 
     cout << "main thread exit" << endl;
     return 0;

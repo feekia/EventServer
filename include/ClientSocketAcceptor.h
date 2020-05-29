@@ -23,13 +23,14 @@
 #include "wrapper.h"
 
 using namespace std;
-
+typedef void(*f)();
 class ClientSocketAcceptor {
 private:
 	/*
 	 * 每个客户端对应一个fd，并有一个数据处理任务std::function<void()>
 	 */
 	std::map<evutil_socket_t,std::function<void()>> taskMap;
+	std::map<evutil_socket_t,f> tma;
 
 	/*
 	 * 每个客户端对应一个event_base
@@ -57,6 +58,7 @@ public:
 //	static void bufferevent_onRead(struct bufferevent *bev, void *ctx);
 
 	static void onRead(evutil_socket_t socket_fd, short events, void *ctx);
+	static void onWrite(evutil_socket_t socket_fd, short events, void *ctx);
 
 //	void stop();
 //	virtual void onDestroy();
