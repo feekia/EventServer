@@ -7,20 +7,22 @@ libevent开发server端
 
 3.libevent 多线程io
 
--------------------------            |
-payload protocol(json or other)      | \
--------------------------            |  业务层逻辑
-mqtt                             |   | /
--------------------------        |   |
-TLS                              | 
--------------------------        | 
-1个acceptor                      | 
-10 个 base loop（write & read）  | \
-1 个read thread pool             | |  接入层
-1个write thread pool             |/ 
--------------------------        | 
-TCP                              | 
--------------------------        | 
+-------------------------------  
+payload protocol(json or other)     
+-------------------------------    
+mqtt                              
+-------------------------------         
+TLS                             
+-------------------------------       
+1个acceptor                      
+10 个 event_base loop
+write 和 read分别用不同的event，
+write对应的event有需要时才监控
+1 个read thread pool              
+1个write thread pool             
+------------------------------ 
+TCP                             
+------------------------------    
 ## 编译
 ./autofen.sh
 
