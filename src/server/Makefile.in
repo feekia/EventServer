@@ -99,7 +99,7 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
-am_EventServer_OBJECTS = ClientSocketAcceptor.$(OBJEXT) \
+am_EventServer_OBJECTS = acceptor.$(OBJEXT) socketholder.$(OBJEXT) \
 	Handler.$(OBJEXT) Message.$(OBJEXT) ThreadPool.$(OBJEXT) \
 	EventServer.$(OBJEXT)
 EventServer_OBJECTS = $(am_EventServer_OBJECTS)
@@ -256,7 +256,8 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AUTOMAKE_OPTIONS = foreign  
-EventServer_SOURCES = ClientSocketAcceptor.cpp Handler.cpp Message.cpp ThreadPool.cpp EventServer.cpp
+#EventServer_SOURCES= ClientSocketAcceptor.cpp Handler.cpp Message.cpp ThreadPool.cpp EventServer.cpp
+EventServer_SOURCES = acceptor.cpp socketholder.cpp Handler.cpp Message.cpp ThreadPool.cpp EventServer.cpp
 EventServer_LDFLAGS = 
 all: all-am
 
@@ -344,11 +345,12 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ClientSocketAcceptor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/EventServer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Handler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Message.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ThreadPool.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/acceptor.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/socketholder.Po@am__quote@
 
 .cpp.o:
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<

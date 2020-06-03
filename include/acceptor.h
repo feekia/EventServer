@@ -14,7 +14,7 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <map>
-
+#include <signal.h>
 #include <event2/event.h>
 #include <event2/listener.h>
 
@@ -27,19 +27,22 @@ using namespace std;
 class acceptor
 {
 private:
-	raii_evconnlistener listener;
 	raii_event_base base;
+	raii_evconnlistener listener;
+	raii_event signal_event;
 	std::unique_ptr<socketholder> holder;
-	std::thread acceptorThread;
-	std::mutex syncMutex;
+	std::unique_ptr<std::thread> acceptorThread;
 	std::function<void()> breakCb;
-
+	std::mutex syncMutex;
+	
 public:
 	acceptor(std::function<void()> &&f);
 	virtual ~acceptor();
 	int init(int port);
 	static void connection_cb(struct evconnlistener *listener, evutil_socket_t fd, struct sockaddr *sa, int socklen, void *ctx);
-	void onListenBreak();
 	void stop();
+	void wait();
+private:
+	void onListenBreak();
 };
 #endif /* __ACCOPTOR_H__ */

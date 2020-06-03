@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include <memory>
 #include <vector>
 #include <string>
 #include <algorithm>
@@ -14,11 +13,12 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <map>
-
+#include <mutex>
+#include <atomic>
+#include <condition_variable>
 #include <event2/event.h>
 #include <event2/listener.h>
 
-#include "ThreadPool.h"
 #include "events.h"
 #include "wrapper.h"
 
@@ -28,14 +28,13 @@ using namespace std;
 class socketholder
 {
 private:
-	std::vector<raii_event_base> watcherGroup;
-	std::vector<std::map<evutil_socket_t, raii_event>> events;
-	// std::map<evutil_socket_t, raii_event> events;
+	std::array<raii_event_base,LOOP_MAX> watcher_group;
+	std::array<std::thread,LOOP_MAX> watcher_thread;
 	std::map<string, evutil_socket_t> ids;
-	std::unique_ptr<ThreadPool> pool;
 	std::mutex syncMutex;
+	std::condition_variable condition;
 	std::atomic_bool isStop;
-
+	std::array<std::map<evutil_socket_t, raii_event>,LOOP_MAX> eventset;
 public:
 	socketholder();
 	virtual ~socketholder();

@@ -29,6 +29,20 @@ using namespace std;
 
 
 #if 1
+#include "acceptor.h"
+int main(int argc, char **argv)
+{
+	evthread_use_pthreads();
+    std::unique_ptr<acceptor> ptr_acceptor = std::make_unique<acceptor>([](){
+		cout << " break acceptor" << endl;
+	});
+	ptr_acceptor->init(9950);
+
+	ptr_acceptor->wait();
+    cout << "main thread exit" << endl;
+    return 0;
+}
+#elif 0
 #include "ClientSocketAcceptor.h"
 
 typedef void (*f_signal)(evutil_socket_t, short, void *);
