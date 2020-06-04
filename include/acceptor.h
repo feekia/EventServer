@@ -33,7 +33,6 @@ private:
 	std::unique_ptr<socketholder> holder;
 	std::unique_ptr<std::thread> acceptorThread;
 	std::function<void()> breakCb;
-	std::mutex syncMutex;
 	
 public:
 	acceptor(std::function<void()> &&f);

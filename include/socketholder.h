@@ -21,6 +21,7 @@
 
 #include "events.h"
 #include "wrapper.h"
+#include "threadpools.h"
 
 #define LOOP_MAX (8)
 #define EVENT_BASE_WATCH_MAX (128 * 1024)
@@ -35,6 +36,7 @@ private:
 	std::condition_variable condition;
 	std::atomic_bool isStop;
 	std::array<std::map<evutil_socket_t, raii_event>,LOOP_MAX> eventset;
+	threadpools pools;
 public:
 	socketholder();
 	virtual ~socketholder();

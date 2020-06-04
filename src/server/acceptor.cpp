@@ -71,7 +71,6 @@ void acceptor::connection_cb(struct evconnlistener *listener, evutil_socket_t fd
 		return;
 
 	acceptor *accp = (acceptor *)ctx;
-	std::unique_lock<std::mutex> lock(accp->syncMutex);
 	accp->holder->onConnect(fd);
 }
 

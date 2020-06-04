@@ -34,71 +34,11 @@ int main(int argc, char **argv)
 {
 	evthread_use_pthreads();
     std::unique_ptr<acceptor> ptr_acceptor = std::make_unique<acceptor>([](){
-		cout << " break acceptor" << endl;
+		cout << " break acceptor in callback" << endl;
 	});
 	ptr_acceptor->init(9950);
 
 	ptr_acceptor->wait();
-    cout << "main thread exit" << endl;
-    return 0;
-}
-#elif 0
-#include "ClientSocketAcceptor.h"
-
-typedef void (*f_signal)(evutil_socket_t, short, void *);
-static void
-signal_cb(evutil_socket_t sig, short events, void *ctx)
-{
-	struct event_base *base = (struct event_base *)ctx;
-	struct timeval delay = { 2, 0 };
-
-	cout << "Caught an interrupt signal; exiting cleanly in two seconds. sig:" << sig << endl;
-
-	event_base_loopexit(base, &delay);
-}
-
-int main(int argc, char **argv)
-{
-	auto flags = EV_SIGNAL|EV_PERSIST;
-	struct sockaddr_in sin;
-
-	memset(&sin, 0, sizeof(sin));
-	sin.sin_family = AF_INET;
-	sin.sin_port = htons(9950);
-	evthread_use_pthreads();
-    // Obtain event base
-    auto raii_base = obtain_event_base();
-
-    std::unique_ptr<ClientSocketAcceptor> ptr_acceptor = make_unique<ClientSocketAcceptor>();
-
-    /*
-     * 监听客户端socket链接，
-     * 通过回调connectionListener将客户端的socket fd存储起来
-     */
-	auto raii_listener = obtain_evconnlistener(raii_base.get(), ClientSocketAcceptor::connectionListener, (void*)ptr_acceptor.get(),
-		    LEV_OPT_REUSEABLE|LEV_OPT_CLOSE_ON_FREE, -1, (struct sockaddr*)&sin, sizeof(sin));
-
-	f_signal f = signal_cb;
-    auto raii_signal_event = obtain_event(raii_base.get(), SIGINT, flags, f, (void*)raii_base.get());
-    if(!raii_signal_event.get()  || event_add(raii_signal_event.get(), nullptr) < 0){
-		cout << "Could not create/add a signal event!" << endl;
-		return 1;
-    }
-
-    /*
-     * 起已个线程 监听客户端连接
-     */
-    std::thread acceptorThread([&raii_base](){
-
-    	event_base_dispatch(raii_base.get());
-    	cout << "acceptorThread exit" << endl;
-    });
-
-    acceptorThread.join();
-
-//    ptr_acceptor = nullptr; //提前释放acceptor raii
-    // ptr_acceptor.reset(); //提前释放acceptor raii
-
     cout << "main thread exit" << endl;
     return 0;
 }
@@ -152,35 +92,5 @@ int main(int argc, char **argv)
 		std::this_thread::sleep_for(std::chrono::seconds(100000));
 	}
 	return 1;
-}
-#elif 0
-#include <iostream>
-#include <vector>
-#include <chrono>
-
-#include "ThreadPool.h"
-
-int main()
-{
-
-    ThreadPool pool(4);
-    std::vector< std::future<int> > results;
-
-    for(int i = 0; i < 8; ++i) {
-        results.emplace_back(
-            pool.enqueue([i] {
-                std::cout << "hello " << i << std::endl;
-                std::this_thread::sleep_for(std::chrono::seconds(1));
-                std::cout << "world " << i << std::endl;
-                return i*i;
-            })
-        );
-    }
-
-    for(auto && result: results)
-        std::cout << result.get() << ' ';
-    std::cout << std::endl;
-
-    return 0;
 }
 #endif
