@@ -11,18 +11,14 @@ socketholder::socketholder() : isStop(false), pools(5)
     {
         rwatchers[i] = obtain_event_base();
         watcher_thread[i] = std::thread([this, i]() {
+            watcher_thread[i].detach();
             event_base_loop(rwatchers[i].get(), EVLOOP_NO_EXIT_ON_EMPTY);
             cout << "in loop id: " << i << endl;
-            watcher_thread[i].detach();
         });
     }
 }
 socketholder::~socketholder()
 {
-    for (int i = 0; i < READ_LOOP_MAX; i++)
-    {
-        event_base_loopexit(rwatchers[i].get(), nullptr);
-    }
 }
 
 void socketholder::onConnect(evutil_socket_t fd)
@@ -48,9 +44,13 @@ void socketholder::onDisconnect(evutil_socket_t fd)
     chns[id].erase(fd);
 }
 
-void socketholder::stop()
+void socketholder::waitStop()
 {
     isStop = true;
+    for (int i = 0; i < READ_LOOP_MAX; i++)
+    {
+        event_base_loopexit(rwatchers[i].get(), nullptr);
+    }
 }
 
 std::shared_ptr<channel> socketholder::getChannel(evutil_socket_t fd)
@@ -61,7 +61,6 @@ std::shared_ptr<channel> socketholder::getChannel(evutil_socket_t fd)
     {
         return pair->second->shared_from_this();
     }
-
     else
     {
         return nullptr;

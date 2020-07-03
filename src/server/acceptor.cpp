@@ -73,7 +73,7 @@ void acceptor::onListenBreak()
 {
 	if (breakCb)
 		breakCb();
-	holder->stop();
+	holder->waitStop();
 }
 
 void acceptor::stop()
