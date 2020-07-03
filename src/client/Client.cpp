@@ -143,7 +143,5 @@ int main()
 
 	work_thread.join();
 
-	// close(fd);
-
 	return 0;
 }

@@ -5,6 +5,9 @@
 #include <string>
 #include <thread>
 #include <algorithm>
+#include <valarray>
+
+#include "buffer.h"
 using namespace std;
 
 class test
@@ -152,13 +155,28 @@ int main()
     cout << "index 3 size " << arrmap[3].size() << endl;
     cout << "asdfnasldfj" << endl;
 
-    std::array<std::thread, 4> arrThread;
-    arrThread[0] = std::thread([]() {
-        cout << " id is : " << endl;
-    });
-    for (int i = 0; i < 4; i++)
+    valarray<char> tv1(12);
+
+    std::string srt = "asdf";
+    cout << srt << endl;
+    try
     {
-        if(arrThread[i].joinable())
-        arrThread[i].join();
+        std::vector<int> vec{0};
+        std::vector<int> a(3, 0);
+
+        for (int i : a)
+        {
+            cout << i << endl;
+        }
+        cout << a.size() << endl;
+        vec.push_back(15);
+        cout << vec.back() << endl;
     }
+    catch (const std::exception &e)
+    {
+        cout << "error" << e.what() << '\n' << endl;
+    }
+
+    cout <<  "buffer size :" << sizeof(buffer) << endl;
+    return 0;
 }

@@ -13,7 +13,6 @@
 #include <event2/event.h>
 #include <event2/listener.h>
 
-#include "ThreadPool.h"
 #include "events.h"
 #include "wrapper.h"
 #include "acceptor.h"
@@ -33,13 +32,13 @@ signal_cb(evutil_socket_t sig, short events, void *ctx)
 	event_base_loopexit(base, nullptr);
 }
 
-acceptor::acceptor(std::function<void()> &&f):base(nullptr),listener(nullptr),signal_event(nullptr),holder(nullptr),acceptorThread(nullptr),breakCb(f)
+acceptor::acceptor(std::function<void()> &&f) : base(nullptr), listener(nullptr), signal_event(nullptr), holder(nullptr), breakCb(f)
 {
 }
 
 int acceptor::init(int port)
 {
-	auto flags = EV_SIGNAL|EV_ET;
+	auto flags = EV_SIGNAL | EV_ET;
 	struct sockaddr_in sin;
 
 	memset(&sin, 0, sizeof(sin));
@@ -51,17 +50,13 @@ int acceptor::init(int port)
 	listener = obtain_evconnlistener(base.get(), acceptor::connection_cb, (void *)this,
 									 LEV_OPT_REUSEABLE | LEV_OPT_CLOSE_ON_FREE, -1, (struct sockaddr *)&sin, sizeof(sin));
 	f_signal f = signal_cb;
-    signal_event = obtain_event(base.get(), SIGINT, flags, f, (void*)base.get());
-    if(!signal_event.get()  || event_add(signal_event.get(), nullptr) < 0){
+	signal_event = obtain_event(base.get(), SIGINT, flags, f, (void *)base.get());
+	if (!signal_event.get() || event_add(signal_event.get(), nullptr) < 0)
+	{
 		cout << "Could not create/add a signal event -!" << endl;
-    }
+	}
 
-	holder = std::make_unique<socketholder>();
-	acceptorThread = std::make_unique<std::thread>([this]() {
-		event_base_dispatch(this->base.get());
-		cout << "acceptorThread exit" << endl;
-		onListenBreak();
-	});
+	holder = std::make_shared<socketholder>();
 	return 0;
 }
 
@@ -83,15 +78,16 @@ void acceptor::onListenBreak()
 
 void acceptor::stop()
 {
-	event_base_loopexit(base.get(),nullptr);
+	event_base_loopexit(base.get(), nullptr);
 }
 
-void acceptor::wait(){
-	cout << " wait the acceptor" << endl;
-	acceptorThread->join();
+void acceptor::wait()
+{
+	event_base_loop(this->base.get(), EVLOOP_NO_EXIT_ON_EMPTY);
+	onListenBreak();
+	cout << " exit the acceptor wait" << endl;
 }
 acceptor::~acceptor()
 {
-	// acceptorThread.join();
 	cout << " Exit the acceptor" << endl;
 }

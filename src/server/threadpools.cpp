@@ -34,7 +34,7 @@ threadpools::threadpools(size_t threads) : stop(false)
 }
 
 // add new work item to the pool
-bool threadpools::enqueue(std::function<void()> task)
+bool threadpools::enqueue(std::function<void()> &&task)
 {
     std::unique_lock<std::mutex> lock(queue_mutex);
     tasks.emplace(task);

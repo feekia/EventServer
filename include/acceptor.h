@@ -18,7 +18,6 @@
 #include <event2/event.h>
 #include <event2/listener.h>
 
-#include "ThreadPool.h"
 #include "events.h"
 #include "wrapper.h"
 #include "socketholder.h"
@@ -30,8 +29,7 @@ private:
 	raii_event_base base;
 	raii_evconnlistener listener;
 	raii_event signal_event;
-	std::unique_ptr<socketholder> holder;
-	std::unique_ptr<std::thread> acceptorThread;
+	std::shared_ptr<socketholder> holder;
 	std::function<void()> breakCb;
 	
 public:

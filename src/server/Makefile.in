@@ -100,8 +100,8 @@ CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
 am_EventServer_OBJECTS = acceptor.$(OBJEXT) socketholder.$(OBJEXT) \
-	Handler.$(OBJEXT) Message.$(OBJEXT) threadpools.$(OBJEXT) \
-	EventServer.$(OBJEXT)
+	channel.$(OBJEXT) buffer.$(OBJEXT) Handler.$(OBJEXT) \
+	Message.$(OBJEXT) threadpools.$(OBJEXT) EventServer.$(OBJEXT)
 EventServer_OBJECTS = $(am_EventServer_OBJECTS)
 EventServer_LDADD = $(LDADD)
 EventServer_LINK = $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) \
@@ -256,7 +256,7 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AUTOMAKE_OPTIONS = foreign  
-EventServer_SOURCES = acceptor.cpp socketholder.cpp Handler.cpp Message.cpp threadpools.cpp EventServer.cpp
+EventServer_SOURCES = acceptor.cpp socketholder.cpp channel.cpp buffer.cpp Handler.cpp Message.cpp threadpools.cpp EventServer.cpp
 EventServer_LDFLAGS = 
 all: all-am
 
@@ -348,6 +348,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Handler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Message.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/acceptor.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/buffer.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/channel.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/socketholder.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/threadpools.Po@am__quote@
 

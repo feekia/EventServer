@@ -13,7 +13,7 @@
 class threadpools {
 public:
     threadpools(size_t);
-    bool enqueue(std::function<void()>);
+    bool enqueue(std::function<void()>&&);
     ~threadpools();
 private:
     // need to keep track of threads so we can join them
