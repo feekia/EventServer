@@ -13,9 +13,9 @@ class buffer
 {
 private:
     char *_data;
-    size_t _capacity;
-    size_t _read_index;
-    size_t _write_index;
+    ssize_t _capacity;
+    ssize_t _read_index;
+    ssize_t _write_index;
 
 private:
     char *begin() const
@@ -79,18 +79,18 @@ public:
     }
 
     // size, returns number's of unread bytes of the buffer.
-    size_t size() const
+    ssize_t size() const
     {
         assert(_write_index >= _read_index);
         return _write_index - _read_index;
     }
     // capacity, returns number's of the buffer capacity bytes.
-    size_t capacity() const
+    ssize_t capacity() const
     {
         return _capacity;
     }
 
-    void append(const void *b, size_t l)
+    void append(const void *b, ssize_t l)
     {
         assert(b != nullptr);
         const char *p = static_cast<const char *>(b);
@@ -137,7 +137,7 @@ public:
         }
     }
 
-    size_t remains() const
+    ssize_t remains() const
     {
         assert(_capacity >= _write_index);
         return _capacity - _write_index;
@@ -156,9 +156,9 @@ public:
         _write_index = 0;
     }
 
-    void toString(){
+    void toString()const{
         cout << size() << endl;
     }
-    size_t readsocket(evutil_socket_t fd);
-    size_t writesocket(evutil_socket_t fd);
+    ssize_t readsocket(evutil_socket_t fd);
+    ssize_t writesocket(evutil_socket_t fd);
 };

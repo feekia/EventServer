@@ -19,7 +19,7 @@ class channel:public std::enable_shared_from_this<channel>
 {
 private:
     evutil_socket_t fd;
-    std::shared_ptr<socketholder> holder;
+    std::weak_ptr<socketholder> holder;
     std::mutex rMutex;
     std::mutex wMutex;
     std::atomic<bool> wFromStart; // 写状态，true：有正在写的任务，将数据添加到buffer末尾； false：没有写的任务，将数据写到socket中
@@ -30,7 +30,7 @@ private:
     raii_event wEvent;
 
 public:
-    channel(std::shared_ptr<socketholder> h, evutil_socket_t _fd);
+    channel(std::weak_ptr<socketholder> h, evutil_socket_t _fd);
     ~channel();
 
     void startWatcher();

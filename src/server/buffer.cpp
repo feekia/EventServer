@@ -6,10 +6,10 @@
  * 2.decode && other proccess
  * 3.event_add
  */
-size_t buffer::readsocket(evutil_socket_t fd)
+ssize_t buffer::readsocket(evutil_socket_t fd)
 {
-    size_t rSize = 0;
-    size_t rc = 0;
+    ssize_t rSize = 0;
+    ssize_t rc = 0;
 
     char buffer[512] = {0};
     do
@@ -30,11 +30,11 @@ size_t buffer::readsocket(evutil_socket_t fd)
  * 2.thread pools send
  * 3.if not finish ,than event_add 
  */
-size_t buffer::writesocket(evutil_socket_t fd)
+ssize_t buffer::writesocket(evutil_socket_t fd)
 {
 
-    size_t wSize = 0;
-    size_t rc = 0;
+    ssize_t wSize = 0;
+    ssize_t rc = 0;
 
     do
     {

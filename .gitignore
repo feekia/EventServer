@@ -3,3 +3,4 @@ si
 *.o
 autoscan.log
 .vscode
+./autom4te.cache

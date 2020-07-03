@@ -11,9 +11,10 @@ socketholder::socketholder() : isStop(false), pools(5)
     {
         rwatchers[i] = obtain_event_base();
         watcher_thread[i] = std::thread([this, i]() {
-            watcher_thread[i].detach();
+            // watcher_thread[i].detach();
             event_base_loop(rwatchers[i].get(), EVLOOP_NO_EXIT_ON_EMPTY);
             cout << "in loop id: " << i << endl;
+            std::this_thread::sleep_for(std::chrono::seconds(2));
         });
     }
 }
@@ -50,6 +51,13 @@ void socketholder::waitStop()
     for (int i = 0; i < READ_LOOP_MAX; i++)
     {
         event_base_loopexit(rwatchers[i].get(), nullptr);
+    }
+    for (int i = 0; i < READ_LOOP_MAX; i++)
+    {
+        if (watcher_thread[i].joinable())
+        {
+            watcher_thread[i].join();
+        }
     }
 }
 
