@@ -72,29 +72,13 @@ void channel::onDisconnect(evutil_socket_t fd)
 void channel::onRead(evutil_socket_t socket_fd, short events, void *ctx)
 {
     auto chan = ((channel *)ctx)->shared_from_this();
-    if (events | EV_TIMEOUT)
+    if (events & EV_TIMEOUT)
     {
-        if (chan->stop && chan->wBuf.size() == 0 && chan->rBuf.size() == 0)
-        {
-            chan->removeReadEvent();
-            chan->removeWriteEvent();
-            close(chan->fd);
-
-            std::shared_ptr<socketholder> hld = chan->holder.lock();
-            if (hld == nullptr)
-            {
-                return;
-            }
-            hld->onDisconnect(chan->fd);
-        }
-        else
-        {
-            chan->addReadEvent(0);
-        }
-
+        cout << "onRead timeout close: " << socket_fd << endl;
+        chan->addReadEvent(0);
         return;
     }
-
+    cout << "onRead: " << socket_fd << endl;
     std::shared_ptr<socketholder> hld = chan->holder.lock();
     if (hld == nullptr)
     {
