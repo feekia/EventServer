@@ -36,6 +36,9 @@ ssize_t buffer::writesocket(evutil_socket_t fd)
     ssize_t wSize = 0;
     ssize_t rc = 0;
 
+    if(size() <= 0){
+        return 0;
+    }
     do
     {
         wSize = write(fd, (void *)readbegin(), size());

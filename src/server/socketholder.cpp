@@ -44,7 +44,15 @@ void socketholder::onDisconnect(evutil_socket_t fd)
     auto id = fd % READ_LOOP_MAX;
     chns[id].erase(fd);
 }
-
+void socketholder::closeIdleChannel(){
+    std::unique_lock<std::mutex> lock(syncMutex);
+    for (int i = 0; i < READ_LOOP_MAX; i++)
+    {
+        for (auto &kv : chns[i]) {
+            kv.second->closeSafty();
+        }
+    }
+}
 void socketholder::waitStop()
 {
     isStop = true;

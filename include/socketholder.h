@@ -48,6 +48,7 @@ public:
 	void onDisconnect(evutil_socket_t fd);
 	size_t send(std::shared_ptr<channel> c, char *d, size_t l);
 	std::shared_ptr<channel> getChannel(evutil_socket_t fd);
+	void closeIdleChannel();
 	void waitStop();
 
 	std::shared_ptr<socketholder> share()
