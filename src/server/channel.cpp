@@ -11,7 +11,8 @@ channel::~channel()
 void channel::startWatcher()
 {
     std::shared_ptr<socketholder> hld = holder.lock();
-    if(hld == nullptr){
+    if (hld == nullptr)
+    {
         return;
     }
     auto base = hld->rwatchers[fd % READ_LOOP_MAX].get();
@@ -45,20 +46,21 @@ void channel::onDisconnect(evutil_socket_t fd)
 
 void channel::onRead(evutil_socket_t socket_fd, short events, void *ctx)
 {
-    cout << " onRead events:  " << events << endl;
     auto chan = ((channel *)ctx)->shared_from_this();
     std::shared_ptr<socketholder> hld = chan->holder.lock();
-    if(hld == nullptr){
+    if (hld == nullptr)
+    {
         return;
     }
     hld->pools.enqueue([chan, socket_fd]() {
-        std::unique_lock<std::mutex> lock(chan->rMutex);
+        std::unique_lock<std::mutex> lock(chan->cMutex);
         auto size = chan->rBuf.readsocket(socket_fd);
         if (0 == size || -1 == size)
         {
             cout << "remote socket is close for socket: " << socket_fd << endl;
             std::shared_ptr<socketholder> hld = chan->holder.lock();
-            if(hld == nullptr){
+            if (hld == nullptr)
+            {
                 return;
             }
             hld->onDisconnect(socket_fd);
@@ -72,14 +74,14 @@ void channel::onRead(evutil_socket_t socket_fd, short events, void *ctx)
 }
 void channel::onWrite(evutil_socket_t socket_fd, short events, void *ctx)
 {
-    cout << " onWrite events:  " << events << endl;
     auto chan = ((channel *)ctx)->shared_from_this();
     std::shared_ptr<socketholder> hld = chan->holder.lock();
-    if(hld == nullptr){
+    if (hld == nullptr)
+    {
         return;
     }
     hld->pools.enqueue([chan, socket_fd]() {
-        std::unique_lock<std::mutex> lock(chan->wMutex);
+        std::unique_lock<std::mutex> lock(chan->cMutex);
         auto size = chan->wBuf.writesocket(socket_fd);
         if (chan->wBuf.size() > 0)
         {
@@ -87,4 +89,23 @@ void channel::onWrite(evutil_socket_t socket_fd, short events, void *ctx)
             chan->addWriteEvent(0);
         }
     });
+}
+
+void channel::closeSafty()
+{
+    std::unique_lock<std::mutex> lock(cMutex);
+    stop = true;
+    if (wBuf.size() == 0 && rBuf.size() == 0)
+    {
+        removeReadEvent();
+        removeWriteEvent();
+        close(fd);
+
+        std::shared_ptr<socketholder> hld = holder.lock();
+        if (hld == nullptr)
+        {
+            return;
+        }
+        hld->onDisconnect(fd);
+    }
 }

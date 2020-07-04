@@ -17,21 +17,6 @@ private:
     ssize_t _read_index;
     ssize_t _write_index;
 
-private:
-    char *begin() const
-    {
-        return _data;
-    }
-    char *writebegin() const
-    {
-        return begin() + _write_index;
-    }
-
-    char *readbegin() const
-    {
-        return begin() + _read_index;
-    }
-
 public:
     buffer() : _data(nullptr), _capacity(0), _read_index(0), _write_index(0) {}
     buffer(int len) : _capacity(len), _read_index(0), _write_index(0)
@@ -76,6 +61,16 @@ public:
         _capacity = 0;
         _read_index = 0;
         _write_index = 0;
+    }
+
+    char *writebegin() const
+    {
+        return _data + _write_index;
+    }
+
+    char *readbegin() const
+    {
+        return _data+ _read_index;
     }
 
     // size, returns number's of unread bytes of the buffer.
@@ -156,8 +151,13 @@ public:
         _write_index = 0;
     }
 
+    void updateReadIndex(ssize_t l){
+        memset(_data,0x0,_read_index + l);
+        _read_index += l;
+    }
+
     void toString()const{
-        cout << size() << endl;
+        cout << "buffer len: " <<size() << endl;
     }
     ssize_t readsocket(evutil_socket_t fd);
     ssize_t writesocket(evutil_socket_t fd);
