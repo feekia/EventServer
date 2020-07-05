@@ -22,7 +22,7 @@
 using namespace std;
 
 #define BUF_SIZE 1024
-#define LOG(X) std::cout << "in function: " << X << std::endl
+#define LOG(X) std::cout << "Client: " << X << std::endl
 
 static void onSignal(evutil_socket_t sig, short events, void *ctx)
 {

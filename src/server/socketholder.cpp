@@ -12,14 +12,32 @@ socketholder::socketholder() : isStop(false), pools(5)
         rwatchers[i] = obtain_event_base();
         watcher_thread[i] = std::thread([this, i]() {
             // watcher_thread[i].detach();
-            event_base_loop(rwatchers[i].get(), EVLOOP_NO_EXIT_ON_EMPTY);
+            while (!isStop)
+            {
+                event_base_dispatch(rwatchers[i].get());
+                if (!isStop)
+                    std::this_thread::sleep_for(std::chrono::seconds(2));
+            }
+            // event_base_loop(rwatchers[i].get(), EVLOOP_NO_EXIT_ON_EMPTY);
             cout << "in loop id: " << i << endl;
-            std::this_thread::sleep_for(std::chrono::seconds(2));
+            // std::this_thread::sleep_for(std::chrono::seconds(2));
         });
     }
 }
 socketholder::~socketholder()
 {
+    // std::this_thread::sleep_for(std::chrono::seconds(2));
+    // for (int i = 0; i < READ_LOOP_MAX; i++)
+    // {
+    //     event_base_loopexit(rwatchers[i].get(), nullptr);
+    // }
+    for (int i = 0; i < READ_LOOP_MAX; i++)
+    {
+        if (watcher_thread[i].joinable())
+        {
+            watcher_thread[i].join();
+        }
+    }
 }
 
 void socketholder::onConnect(evutil_socket_t fd)
@@ -43,30 +61,26 @@ void socketholder::onDisconnect(evutil_socket_t fd)
 
     auto id = fd % READ_LOOP_MAX;
     chns[id].erase(fd);
+    cout << "socketholder onDisconnect" << endl;
 }
-void socketholder::closeIdleChannel(){
+void socketholder::closeIdleChannel()
+{
     std::unique_lock<std::mutex> lock(syncMutex);
     for (int i = 0; i < READ_LOOP_MAX; i++)
     {
-        for (auto &kv : chns[i]) {
+        for (auto &kv : chns[i])
+        {
             kv.second->closeSafty();
         }
     }
 }
 void socketholder::waitStop()
 {
+
+    cout << " socketholer waitStop" << endl;
+
+    closeIdleChannel();
     isStop = true;
-    for (int i = 0; i < READ_LOOP_MAX; i++)
-    {
-        event_base_loopexit(rwatchers[i].get(), nullptr);
-    }
-    for (int i = 0; i < READ_LOOP_MAX; i++)
-    {
-        if (watcher_thread[i].joinable())
-        {
-            watcher_thread[i].join();
-        }
-    }
 }
 
 std::shared_ptr<channel> socketholder::getChannel(evutil_socket_t fd)

@@ -27,27 +27,31 @@
 
 using namespace std;
 
-
 #if 1
 #include "acceptor.h"
 int main(int argc, char **argv)
 {
 	evthread_use_pthreads();
-    std::unique_ptr<acceptor> ptr_acceptor = std::make_unique<acceptor>([](){
+	std::unique_ptr<acceptor> ptr_acceptor = std::make_unique<acceptor>([]() {
 		cout << " break acceptor in callback" << endl;
 	});
 	ptr_acceptor->init(9950);
 
 	ptr_acceptor->wait();
-    cout << "main thread exit" << endl;
-    return 0;
+	cout << "main thread exit" << endl;
+	ptr_acceptor.reset();
+	std::this_thread::sleep_for(std::chrono::seconds(180));
+	return 0;
 }
 #elif 0
 
-class myHandler : public Handler{
-	virtual void handleMessage(Message& msg) override {
+class myHandler : public Handler
+{
+	virtual void handleMessage(Message &msg) override
+	{
 		Handler::handleMessage(msg);
-		switch(msg.m_what){
+		switch (msg.m_what)
+		{
 		case 0:
 
 			break;
@@ -79,16 +83,19 @@ int main(int argc, char **argv)
 	cout << "IN main" << endl;
 
 	myHandler hdlr;
-	for(int i = 0; i < 6; i++){
+	for (int i = 0; i < 6; i++)
+	{
 		hdlr.sendEmptyMessage(i, 100 * i);
 	}
 
-	hdlr.postAtTime([](){
+	hdlr.postAtTime([]() {
 		cout << "IN POST call back" << endl;
-	}, 230);
+	},
+					230);
 
 	hdlr.stopSafty(true);
-	while(true){
+	while (true)
+	{
 		std::this_thread::sleep_for(std::chrono::seconds(100000));
 	}
 	return 1;

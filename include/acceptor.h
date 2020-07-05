@@ -29,6 +29,7 @@ private:
 	raii_event_base base;
 	raii_evconnlistener listener;
 	raii_event signal_event;
+	raii_event pipe_event;
 	std::shared_ptr<socketholder> holder;
 	std::function<void()> breakCb;
 	

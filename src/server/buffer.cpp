@@ -15,10 +15,12 @@ ssize_t buffer::readsocket(evutil_socket_t fd)
     do
     {
         rSize = read(fd, (void *)buffer, 512);
+        cout << "rSize : " <<rSize << endl;
         if (rSize > 0)
         {
             rc += rSize;
             append(buffer, rSize);
+            
         }
     } while ((rSize == -1 && errno == EINTR) || (rSize == 512));
 

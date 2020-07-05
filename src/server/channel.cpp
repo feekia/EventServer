@@ -59,6 +59,10 @@ bool channel::send(char *buffer, size_t l)
         return false;
     }
     std::unique_lock<std::mutex> lock(cMutex);
+    if (stop)
+    {
+        return false;
+    }
     wBuf.append(buffer, l);
     wBuf.writesocket(fd);
     addWriteEvent(WRITETIMEOUT);
@@ -73,10 +77,11 @@ void channel::onRead(evutil_socket_t socket_fd, short events, void *ctx)
     auto chan = ((channel *)ctx)->shared_from_this();
     if (events & EV_TIMEOUT)
     {
-        cout << "onRead timeout: " << socket_fd << endl;
         // 判斷心跳是否超時
         if (chan->isHeartBrakeExpired())
         {
+            std::unique_lock<std::mutex> lock(chan->cMutex);
+            cout << "onRead timeout Expired " << socket_fd << endl;
             chan->removeWriteEvent();
             chan->removeReadEvent();
             close(socket_fd);
@@ -88,12 +93,33 @@ void channel::onRead(evutil_socket_t socket_fd, short events, void *ctx)
             }
             hld->onDisconnect(socket_fd);
         }
+        else
+        {
+            cout << "onRead timeout " << socket_fd << " write buffer size " << chan->wBuf.size() << endl;
+            if (chan->stop == true)
+            {
+                std::unique_lock<std::mutex> lock(chan->cMutex);
+                if (chan->state == INIT)
+                {
+                    shutdown(socket_fd, SHUT_WR);
+                    chan->state = SHUTDOWN;
+                    chan->addReadEvent(READTIMEOUT);
+                }
+                else if (chan->state == SHUTDOWN)
+                {
+                    close(socket_fd);
+                    chan->state = CLOSE;
+                }
+                return;
+            }
+
+            chan->addReadEvent(READTIMEOUT);
+        }
 
         return;
     }
 
     chan->updateHearBrakeExpired();
-    cout << "onRead: " << socket_fd << endl;
     std::shared_ptr<socketholder> hld = chan->holder.lock();
     if (hld == nullptr)
     {
@@ -105,7 +131,6 @@ void channel::onRead(evutil_socket_t socket_fd, short events, void *ctx)
             cout << "when read task run, socket is close,so return" << endl;
             return;
         }
-        std::unique_lock<std::mutex> lock(chan->cMutex);
         auto size = chan->rBuf.readsocket(socket_fd);
         if (0 == size || -1 == size)
         {
@@ -115,6 +140,8 @@ void channel::onRead(evutil_socket_t socket_fd, short events, void *ctx)
             {
                 return;
             }
+            std::unique_lock<std::mutex> lock(chan->cMutex);
+            chan->stop = true;
             close(socket_fd);
             chan->state = CLOSE;
             hld->onDisconnect(socket_fd);
@@ -122,6 +149,10 @@ void channel::onRead(evutil_socket_t socket_fd, short events, void *ctx)
         }
         // TODO: decode read buffer
         chan->rBuf.toString();
+        chan->send(chan->rBuf.readbegin(), chan->rBuf.size());
+        // chan->wBuf.append(chan->rBuf.readbegin(), chan->rBuf.size());
+        // chan->wBuf.writesocket(socket_fd);
+        // chan->addWriteEvent(WRITETIMEOUT);
         chan->rBuf.reset();
         chan->addReadEvent(READTIMEOUT);
     });
@@ -136,6 +167,8 @@ void channel::onWrite(evutil_socket_t socket_fd, short events, void *ctx)
     }
     if (events & EV_TIMEOUT)
     {
+        std::unique_lock<std::mutex> lock(chan->cMutex);
+        chan->stop = true;
         cout << "write timeout" << endl;
         chan->removeWriteEvent();
         chan->removeReadEvent();
@@ -152,10 +185,10 @@ void channel::onWrite(evutil_socket_t socket_fd, short events, void *ctx)
             return;
         }
         std::unique_lock<std::mutex> lock(chan->cMutex);
-        auto size = chan->wBuf.writesocket(socket_fd);
-        chan->addWriteEvent(WRITETIMEOUT);
         if (chan->wBuf.size() > 0)
         {
+            auto size = chan->wBuf.writesocket(socket_fd);
+            chan->addWriteEvent(WRITETIMEOUT);
             cout << "not finish write" << endl;
             return;
         }
@@ -174,6 +207,7 @@ void channel::closeSafty()
     stop = true;
     if (wBuf.size() <= 0)
     {
+        cout << "closeSafty :" << fd << endl;
         shutdown(fd, SHUT_WR);
         state = SHUTDOWN;
     }

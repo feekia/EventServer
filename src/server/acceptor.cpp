@@ -22,23 +22,31 @@ using namespace std;
 #define BUF_SIZE 1024
 
 typedef void (*f_signal)(evutil_socket_t, short, void *);
-static void
-signal_cb(evutil_socket_t sig, short events, void *ctx)
+
+static void signal_int(evutil_socket_t sig, short events, void *ctx)
 {
+	static bool isStop = false;
 	struct event_base *base = (struct event_base *)ctx;
-
-	cout << "Caught an interrupt signal; exiting cleanly in two seconds. sig:" << sig << endl;
-
-	event_base_loopexit(base, nullptr);
+	cout << "Caught an signal : " << events << endl;
+	if (!isStop)
+	{
+		isStop = true;
+		cout << "Caught an signal : SIGINT" << endl;
+		event_base_loopexit(base, nullptr);
+	}
 }
 
-acceptor::acceptor(std::function<void()> &&f) : base(nullptr), listener(nullptr), signal_event(nullptr), holder(nullptr), breakCb(f)
+static void signal_pipe(evutil_socket_t sig, short events, void *ctx)
+{
+
+}
+acceptor::acceptor(std::function<void()> &&f) : base(nullptr), listener(nullptr), signal_event(nullptr), pipe_event(nullptr),holder(nullptr), breakCb(f)
 {
 }
 
 int acceptor::init(int port)
 {
-	auto flags = EV_SIGNAL | EV_ET;
+	auto flags = EV_SIGNAL | EV_PERSIST;
 	struct sockaddr_in sin;
 
 	memset(&sin, 0, sizeof(sin));
@@ -49,11 +57,17 @@ int acceptor::init(int port)
 
 	listener = obtain_evconnlistener(base.get(), acceptor::connection_cb, (void *)this,
 									 LEV_OPT_REUSEABLE | LEV_OPT_CLOSE_ON_FREE, -1, (struct sockaddr *)&sin, sizeof(sin));
-	f_signal f = signal_cb;
-	signal_event = obtain_event(base.get(), SIGINT, flags, f, (void *)base.get());
+
+	signal_event = obtain_event(base.get(), SIGINT, flags, signal_int, (void *)base.get());
 	if (!signal_event.get() || event_add(signal_event.get(), nullptr) < 0)
 	{
-		cout << "Could not create/add a signal event -!" << endl;
+		cout << "Could not create/add a SIGINT event -!" << endl;
+	}
+
+	pipe_event = obtain_event(base.get(), SIGPIPE, flags, signal_pipe, (void *)base.get());
+	if (!pipe_event.get() || event_add(pipe_event.get(), nullptr) < 0)
+	{
+		cout << "Could not create/add a SIGPIPE event -!" << endl;
 	}
 
 	holder = std::make_shared<socketholder>();
@@ -84,6 +98,7 @@ void acceptor::stop()
 void acceptor::wait()
 {
 	event_base_loop(this->base.get(), EVLOOP_NO_EXIT_ON_EMPTY);
+	cout << " exit the acceptor wait" << endl;
 	onListenBreak();
 	cout << " exit the acceptor wait" << endl;
 }
