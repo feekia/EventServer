@@ -6,7 +6,7 @@
 
 #include <mutex>
 #include <atomic>
-
+#include <chrono>
 #include <event.h>
 #include <event2/event.h>
 #include "events.h"
@@ -15,6 +15,19 @@
 using namespace std;
 using f_event_cb = void (*)(evutil_socket_t socket_fd, short events, void *ctx);
 class socketholder;
+enum socket_state
+{
+    INIT,
+    SHUTDOWN,
+    CLOSE
+};
+
+enum timeout_config
+{
+    READTIMEOUT = 20,
+    WRITETIMEOUT = 10,
+    HEARTBITTIMEOUT = 60
+};
 class channel : public std::enable_shared_from_this<channel>
 {
 private:
@@ -22,10 +35,12 @@ private:
     std::weak_ptr<socketholder> holder;
     std::mutex cMutex;
     std::atomic<bool> stop;
+    std::atomic<int8_t> state;
     buffer wBuf;
     buffer rBuf;
     raii_event rEvent;
     raii_event wEvent;
+    int64_t timestamp = 0;
 
 public:
     channel(std::weak_ptr<socketholder> h, evutil_socket_t _fd);
@@ -49,6 +64,19 @@ public:
         return shared_from_this();
     }
 
+    bool isHeartBrakeExpired()
+    {
+        std::chrono::system_clock::duration d = std::chrono::system_clock::now().time_since_epoch();
+        std::chrono::seconds sec = std::chrono::duration_cast<std::chrono::seconds>(d);
+        timestamp = sec.count();
+        return (sec.count() - timestamp) > HEARTBITTIMEOUT;
+    }
+    void updateHearBrakeExpired()
+    {
+        std::chrono::system_clock::duration d = std::chrono::system_clock::now().time_since_epoch();
+        std::chrono::seconds sec = std::chrono::duration_cast<std::chrono::seconds>(d);
+        timestamp = sec.count();
+    }
     static void onRead(evutil_socket_t socket_fd, short events, void *ctx);
     static void onWrite(evutil_socket_t socket_fd, short events, void *ctx);
     void closeSafty();
