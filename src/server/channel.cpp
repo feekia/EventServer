@@ -66,6 +66,7 @@ bool channel::send(char *buffer, size_t l)
     wBuf.append(buffer, l);
     wBuf.writesocket(fd);
     addWriteEvent(WRITETIMEOUT);
+    return true;
 }
 void channel::onDisconnect(evutil_socket_t fd)
 {
@@ -101,14 +102,31 @@ void channel::onRead(evutil_socket_t socket_fd, short events, void *ctx)
                 std::unique_lock<std::mutex> lock(chan->cMutex);
                 if (chan->state == INIT)
                 {
-                    shutdown(socket_fd, SHUT_WR);
-                    chan->state = SHUTDOWN;
-                    chan->addReadEvent(READTIMEOUT);
+                    if (chan->wBuf.size() == 0)
+                    {
+                        shutdown(socket_fd, SHUT_WR);
+                        chan->state = SHUTDOWN;
+                        chan->addReadEvent(READTIMEOUT);
+                    }
+                    else
+                    {
+                        chan->wBuf.writesocket(chan->fd);
+                        chan->addWriteEvent(WRITETIMEOUT);
+                        chan->addReadEvent(READTIMEOUT);
+                    }
+                    return;
                 }
                 else if (chan->state == SHUTDOWN)
                 {
                     close(socket_fd);
                     chan->state = CLOSE;
+                    std::shared_ptr<socketholder> hld = chan->holder.lock();
+                    if (hld == nullptr)
+                    {
+                        cout << "std::shared_ptr<socketholder> is release " << endl;
+                        return;
+                    }
+                    hld->onDisconnect(socket_fd);
                 }
                 return;
             }
@@ -197,6 +215,17 @@ void channel::onWrite(evutil_socket_t socket_fd, short events, void *ctx)
             //shutdown write mode
             shutdown(socket_fd, SHUT_WR);
             chan->state = SHUTDOWN;
+        }
+        else if (chan->stop)
+        {
+            close(socket_fd);
+            chan->state = CLOSE;
+            std::shared_ptr<socketholder> hld = chan->holder.lock();
+            if (hld == nullptr)
+            {
+                return;
+            }
+            hld->onDisconnect(socket_fd);
         }
     });
 }

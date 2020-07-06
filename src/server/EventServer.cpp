@@ -40,7 +40,7 @@ int main(int argc, char **argv)
 	ptr_acceptor->wait();
 	cout << "main thread exit" << endl;
 	ptr_acceptor.reset();
-	std::this_thread::sleep_for(std::chrono::seconds(180));
+	std::this_thread::sleep_for(std::chrono::seconds(2));
 	return 0;
 }
 #elif 0

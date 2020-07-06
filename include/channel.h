@@ -68,7 +68,6 @@ public:
     {
         std::chrono::system_clock::duration d = std::chrono::system_clock::now().time_since_epoch();
         std::chrono::seconds sec = std::chrono::duration_cast<std::chrono::seconds>(d);
-        timestamp = sec.count();
         return (sec.count() - timestamp) > HEARTBITTIMEOUT;
     }
     void updateHearBrakeExpired()
