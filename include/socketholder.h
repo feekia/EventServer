@@ -29,6 +29,7 @@
 #define EVENT_BASE_WATCH_MAX (128 * 1024)
 
 using namespace std;
+
 class socketholder : public std::enable_shared_from_this<socketholder>
 {
 private:
@@ -40,9 +41,11 @@ private:
 	std::array<std::map<evutil_socket_t, std::shared_ptr<channel>>, READ_LOOP_MAX> chns;
 	threadpools pools;
 	friend channel;
+	static socketholder *instance;
+private:
+	socketholder();
 
 public:
-	socketholder();
 	virtual ~socketholder();
 	void onConnect(evutil_socket_t fd);
 	void onDisconnect(evutil_socket_t fd);
@@ -55,5 +58,24 @@ public:
 	{
 		return shared_from_this();
 	}
+	friend void onRead(evutil_socket_t socket_fd, short events, void *ctx);
+	friend void onWrite(evutil_socket_t socket_fd, short events, void *ctx);
+
+public:
+	static socketholder *getInstance()
+	{
+		if (instance == nullptr)
+			instance = new socketholder();
+
+		return instance;
+	}
+	static std::shared_ptr<socketholder> getShared_ptr()
+	{
+		if (instance == nullptr)
+			return nullptr;
+
+		return instance->shared_from_this();
+	}
 };
+
 #endif /* __SOCKET_HOLDER_H__ */

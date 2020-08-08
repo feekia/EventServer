@@ -3,5 +3,9 @@ si
 *.o
 autoscan.log
 .vscode
-autom4te.cache
+autom4te.cache/*
 core
+*/Makefile.in
+Makefile.in
+aclocal.m4
+

@@ -5,6 +5,9 @@
 
 using namespace std;
 
+void onRead(evutil_socket_t socket_fd, short events, void *ctx);
+void onWrite(evutil_socket_t socket_fd, short events, void *ctx);
+socketholder *socketholder::instance = nullptr;
 socketholder::socketholder() : isStop(false), pools(5)
 {
     for (int i = 0; i < READ_LOOP_MAX; i++)
@@ -19,6 +22,7 @@ socketholder::socketholder() : isStop(false), pools(5)
 }
 socketholder::~socketholder()
 {
+    socketholder::instance = nullptr;
 }
 
 void socketholder::onConnect(evutil_socket_t fd)
@@ -32,7 +36,11 @@ void socketholder::onConnect(evutil_socket_t fd)
     auto id = fd % READ_LOOP_MAX;
     cout << "fd is: " << fd << endl;
     std::shared_ptr<channel> pChan = std::make_shared<channel>(shared_from_this(), fd);
-    pChan->startWatcher();
+
+    auto base = rwatchers[fd % READ_LOOP_MAX].get();
+    auto r_event = obtain_event(base, fd, EV_READ | EV_TIMEOUT, onRead, nullptr);
+    auto w_event = obtain_event(base, fd, EV_WRITE | EV_TIMEOUT, onWrite, nullptr);
+    pChan->listenWatcher(std::move(r_event), std::move(w_event));
     chns[id].emplace(fd, pChan->shared_from_this());
 }
 
@@ -95,4 +103,43 @@ std::shared_ptr<channel> socketholder::getChannel(evutil_socket_t fd)
     {
         return nullptr;
     }
+}
+
+void onRead(evutil_socket_t socket_fd, short events, void *ctx)
+{
+    auto sptr = socketholder::getShared_ptr();
+    if (sptr == nullptr)
+    {
+        cout << "onRead sptr nullptr" << endl;
+        return;
+    }
+
+    auto chan = sptr->getChannel(socket_fd);
+    if (chan == nullptr)
+    {
+        cout << "onRead chan nullptr" << endl;
+        return;
+    }
+
+    sptr->pools.enqueue([chan, events]() {
+        chan->onChannelRead(events, nullptr);
+    });
+}
+void onWrite(evutil_socket_t socket_fd, short events, void *ctx)
+{
+    cout << "onWrite start" << endl;
+    auto sptr = socketholder::getShared_ptr();
+    if (sptr == nullptr)
+    {
+        return;
+    }
+
+    auto chan = sptr->getChannel(socket_fd);
+    if (chan == nullptr)
+    {
+        return;
+    }
+    sptr->pools.enqueue([chan, events]() {
+        chan->onChannelWrite(events, nullptr);
+    });
 }

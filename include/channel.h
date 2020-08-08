@@ -43,10 +43,11 @@ private:
     int64_t timestamp = 0;
 
 public:
-    channel(std::weak_ptr<socketholder> h, evutil_socket_t _fd);
+    channel(std::weak_ptr<socketholder> &&h, evutil_socket_t _fd);
     ~channel();
 
-    void startWatcher();
+    void listenWatcher(raii_event &&revent, raii_event &&wevent);
+
     void addReadEvent(size_t timeout);
     void addWriteEvent(size_t timeout);
     void removeReadEvent()
@@ -76,8 +77,9 @@ public:
         std::chrono::seconds sec = std::chrono::duration_cast<std::chrono::seconds>(d);
         timestamp = sec.count();
     }
-    static void onRead(evutil_socket_t socket_fd, short events, void *ctx);
-    static void onWrite(evutil_socket_t socket_fd, short events, void *ctx);
+
+    void onChannelRead(short events, void *ctx);
+    void onChannelWrite(short events, void *ctx);
     void closeSafty();
 };
 #endif

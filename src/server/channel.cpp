@@ -1,6 +1,6 @@
 #include "channel.h"
 #include "socketholder.h"
-channel::channel(std::weak_ptr<socketholder> h, evutil_socket_t _fd) : fd(_fd), holder(h)
+channel::channel(std::weak_ptr<socketholder> &&h, evutil_socket_t _fd) : fd(_fd), holder(h)
 {
     state.store(INIT);
     std::chrono::system_clock::duration d = std::chrono::system_clock::now().time_since_epoch();
@@ -12,25 +12,13 @@ channel::~channel()
 {
 }
 
-void channel::startWatcher()
+void channel::listenWatcher(raii_event &&revent, raii_event &&wevent)
 {
-    std::shared_ptr<socketholder> hld = holder.lock();
-    if (hld == nullptr)
-    {
-        return;
-    }
-    auto base = hld->rwatchers[fd % READ_LOOP_MAX].get();
-    rEvent = obtain_event(base, -1, 0, nullptr, nullptr);
-    auto revent = rEvent.get();
-    event_assign(revent, base, fd, EV_READ | EV_TIMEOUT, onRead, this);
-
-    wEvent = obtain_event(base, -1, 0, nullptr, nullptr);
-    auto wevent = wEvent.get();
-    event_assign(wevent, base, fd, EV_WRITE | EV_TIMEOUT, onWrite, this);
+    rEvent = std::move(revent);
+    wEvent = std::move(wevent);
     struct timeval tv = {30, 0};
-    event_add(rEvent.get(), &tv); // add read event into event_base
+    event_add(rEvent.get(), &tv); // add read event into event_baseF
 }
-
 void channel::addReadEvent(size_t timeout)
 {
     struct timeval tv = {20, 0};
@@ -73,161 +61,147 @@ void channel::onDisconnect(evutil_socket_t fd)
     holder.lock()->onDisconnect(fd);
 }
 
-void channel::onRead(evutil_socket_t socket_fd, short events, void *ctx)
+void channel::onChannelRead(short events, void *ctx)
 {
-    auto chan = ((channel *)ctx)->shared_from_this();
+    std::shared_ptr<socketholder> hld = holder.lock();
+    if (hld == nullptr)
+    {
+        return;
+    }
+    cout << "onChannelRead start " << fd << endl;
     if (events & EV_TIMEOUT)
     {
         // 判斷心跳是否超時
-        if (chan->isHeartBrakeExpired())
+        if (isHeartBrakeExpired())
         {
-            std::unique_lock<std::mutex> lock(chan->cMutex);
-            cout << "onRead timeout Expired " << socket_fd << endl;
-            chan->removeWriteEvent();
-            chan->removeReadEvent();
-            close(socket_fd);
-            chan->state = CLOSE;
-            std::shared_ptr<socketholder> hld = chan->holder.lock();
-            if (hld == nullptr)
             {
-                return;
+                std::unique_lock<std::mutex> lock(cMutex);
+                cout << "onRead timeout Expired " << fd << endl;
+                removeWriteEvent();
+                removeReadEvent();
+                close(fd);
+                state = CLOSE;
             }
-            hld->onDisconnect(socket_fd);
+            hld->onDisconnect(fd);
         }
         else
         {
-            cout << "onRead timeout " << socket_fd << " write buffer size " << chan->wBuf.size() << endl;
-            if (chan->stop == true)
+            cout << "onRead timeout " << fd << " write buffer size " << wBuf.size() << endl;
+            if (stop == true)
             {
-                std::unique_lock<std::mutex> lock(chan->cMutex);
-                if (chan->state == INIT)
+
+                if (state == INIT)
                 {
-                    if (chan->wBuf.size() == 0)
+                    std::unique_lock<std::mutex> lock(cMutex);
+                    if (wBuf.size() == 0)
                     {
-                        shutdown(socket_fd, SHUT_WR);
-                        chan->state = SHUTDOWN;
-                        chan->addReadEvent(READTIMEOUT);
+                        shutdown(fd, SHUT_WR);
+                        state = SHUTDOWN;
+                        addReadEvent(READTIMEOUT);
                     }
                     else
                     {
-                        chan->wBuf.writesocket(chan->fd);
-                        chan->addWriteEvent(WRITETIMEOUT);
-                        chan->addReadEvent(READTIMEOUT);
+                        wBuf.writesocket(fd);
+                        addWriteEvent(WRITETIMEOUT);
+                        addReadEvent(READTIMEOUT);
                     }
                     return;
                 }
-                else if (chan->state == SHUTDOWN)
+                else if (state == SHUTDOWN)
                 {
-                    close(socket_fd);
-                    chan->state = CLOSE;
-                    std::shared_ptr<socketholder> hld = chan->holder.lock();
-                    if (hld == nullptr)
-                    {
-                        cout << "std::shared_ptr<socketholder> is release " << endl;
-                        return;
-                    }
-                    hld->onDisconnect(socket_fd);
+                    close(fd);
+                    state = CLOSE;
+                    hld->onDisconnect(fd);
                 }
                 return;
             }
 
-            chan->addReadEvent(READTIMEOUT);
+            addReadEvent(READTIMEOUT);
         }
 
         return;
     }
 
-    chan->updateHearBrakeExpired();
-    std::shared_ptr<socketholder> hld = chan->holder.lock();
-    if (hld == nullptr)
+    updateHearBrakeExpired();
+    if (state == CLOSE)
     {
+        cout << "when read task run, socket is close,so return" << endl;
         return;
     }
-    hld->pools.enqueue([chan, socket_fd]() {
-        if (chan->state == CLOSE)
+    auto size = rBuf.readsocket(fd);
+    if (0 == size || -1 == size)
+    {
+        cout << "remote socket is close for socket: " << fd << endl;
         {
-            cout << "when read task run, socket is close,so return" << endl;
-            return;
+            std::unique_lock<std::mutex> lock(cMutex);
+            stop = true;
+            close(fd);
+            state = CLOSE;
         }
-        auto size = chan->rBuf.readsocket(socket_fd);
-        if (0 == size || -1 == size)
-        {
-            cout << "remote socket is close for socket: " << socket_fd << endl;
-            std::shared_ptr<socketholder> hld = chan->holder.lock();
-            if (hld == nullptr)
-            {
-                return;
-            }
-            std::unique_lock<std::mutex> lock(chan->cMutex);
-            chan->stop = true;
-            close(socket_fd);
-            chan->state = CLOSE;
-            hld->onDisconnect(socket_fd);
-            return;
-        }
-        // TODO: decode read buffer
-        chan->rBuf.toString();
-        chan->send(chan->rBuf.readbegin(), chan->rBuf.size());
-        // chan->wBuf.append(chan->rBuf.readbegin(), chan->rBuf.size());
-        // chan->wBuf.writesocket(socket_fd);
-        // chan->addWriteEvent(WRITETIMEOUT);
-        chan->rBuf.reset();
-        chan->addReadEvent(READTIMEOUT);
-    });
+        hld->onDisconnect(fd);
+        return;
+    }
+    // TODO: decode read buffer
+    rBuf.toString();
+    send(rBuf.readbegin(), rBuf.size());
+    // wBuf.append(rBuf.readbegin(), rBuf.size());
+    // wBuf.writesocket(socket_fd);
+    // addWriteEvent(WRITETIMEOUT);
+    rBuf.reset();
+    addReadEvent(READTIMEOUT);
 }
-void channel::onWrite(evutil_socket_t socket_fd, short events, void *ctx)
+
+void channel::onChannelWrite(short events, void *ctx)
 {
-    auto chan = ((channel *)ctx)->shared_from_this();
-    std::shared_ptr<socketholder> hld = chan->holder.lock();
+    std::shared_ptr<socketholder> hld = holder.lock();
     if (hld == nullptr)
     {
         return;
     }
     if (events & EV_TIMEOUT)
     {
-        std::unique_lock<std::mutex> lock(chan->cMutex);
-        chan->stop = true;
-        cout << "write timeout" << endl;
-        chan->removeWriteEvent();
-        chan->removeReadEvent();
-        close(socket_fd);
-        chan->state = CLOSE;
-        hld->onDisconnect(socket_fd);
+        {
+            std::unique_lock<std::mutex> lock(cMutex);
+            stop = true;
+            cout << "write timeout" << endl;
+            removeWriteEvent();
+            removeReadEvent();
+            close(fd);
+            state = CLOSE;
+        }
+        hld->onDisconnect(fd);
         return;
     }
-    chan->updateHearBrakeExpired();
-    hld->pools.enqueue([chan, socket_fd]() {
-        if (chan->state == CLOSE)
+    updateHearBrakeExpired();
+
+    if (state == CLOSE)
+    {
+        cout << "when write task run, socket is close,so return" << endl;
+        return;
+    }
+    {
+        std::unique_lock<std::mutex> lock(cMutex);
+        if (wBuf.size() > 0)
         {
-            cout << "when write task run, socket is close,so return" << endl;
-            return;
-        }
-        std::unique_lock<std::mutex> lock(chan->cMutex);
-        if (chan->wBuf.size() > 0)
-        {
-            auto size = chan->wBuf.writesocket(socket_fd);
-            chan->addWriteEvent(WRITETIMEOUT);
+            auto size = wBuf.writesocket(fd);
+            addWriteEvent(WRITETIMEOUT);
             cout << "not finish write" << endl;
             return;
         }
-        if (chan->stop && chan->state == INIT)
-        {
-            //shutdown write mode
-            shutdown(socket_fd, SHUT_WR);
-            chan->state = SHUTDOWN;
-        }
-        else if (chan->stop)
-        {
-            close(socket_fd);
-            chan->state = CLOSE;
-            std::shared_ptr<socketholder> hld = chan->holder.lock();
-            if (hld == nullptr)
-            {
-                return;
-            }
-            hld->onDisconnect(socket_fd);
-        }
-    });
+    }
+    if (stop && state == INIT)
+    {
+        //shutdown write mode
+        shutdown(fd, SHUT_WR);
+        state = SHUTDOWN;
+    }
+    else if (stop)
+    {
+        close(fd);
+        state = CLOSE;
+
+        hld->onDisconnect(fd);
+    }
 }
 
 void channel::closeSafty()

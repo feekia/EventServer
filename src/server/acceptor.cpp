@@ -70,7 +70,8 @@ int acceptor::init(int port)
 		cout << "Could not create/add a SIGPIPE event -!" << endl;
 	}
 
-	holder = std::make_shared<socketholder>();
+	// holder = std::make_shared<socketholder>();
+	holder = std::shared_ptr<socketholder>(socketholder::getInstance());
 	return 0;
 }
 
