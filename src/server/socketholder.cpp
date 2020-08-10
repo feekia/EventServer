@@ -46,11 +46,11 @@ void socketholder::onConnect(evutil_socket_t fd)
 
 void socketholder::onDisconnect(evutil_socket_t fd)
 {
+    cout << "socketholder onDisconnect" << endl;
     std::unique_lock<std::mutex> lock(syncMutex);
 
     auto id = fd % READ_LOOP_MAX;
     chns[id].erase(fd);
-    cout << "socketholder onDisconnect" << endl;
     if (isStop && chns[id].size() == 0)
     {
         event_base_loopexit(rwatchers[id].get(), nullptr);

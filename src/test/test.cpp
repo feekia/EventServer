@@ -9,174 +9,262 @@
 
 #include "buffer.h"
 using namespace std;
+#include <iostream>
+#include <fstream>
+#include <string>
+#include "cereal/archives/binary.hpp"
+#include "cereal/archives/xml.hpp"
+#include "cereal/archives/json.hpp"
+#include "cereal/types/unordered_map.hpp"
+#include "cereal/types/memory.hpp"
+#include "cereal/types/string.hpp" //一定要包含此文件，否则无法将std::string序列化为二进制形式，请看：https://github.com/USCiLab/cereal/issues/58
 
-class test
+using namespace std;
+
+struct MyRecord
 {
-private:
-    /* data */
-public:
-    test(/* args */);
-    ~test();
+    int x, y;
+    float z;
+
+    template <class Archive>
+    void serialize(Archive &ar)
+    {
+        ar(x, y, z);
+    }
+
+    friend std::ostream &operator<<(std::ostream &os, const MyRecord &mr);
 };
 
-test::test(/* args */)
+std::ostream &operator<<(std::ostream &os, const MyRecord &mr)
 {
-    cout << "test" << endl;
+    os << "MyRecord(" << mr.x << ", " << mr.y << "," << mr.z << ")\n";
+    return os;
 }
 
-test::~test()
+struct SomeData
 {
-    cout << "~test" << endl;
-}
+    int32_t id;
+    std::shared_ptr<std::unordered_map<uint32_t, MyRecord>> data;
 
-class RightTest
-{
-private:
-    /* data */
-    int value;
+    SomeData(int32_t id_ = 0) : id(id_), data(new std::unordered_map<uint32_t, MyRecord>)
+    {
+    }
 
-public:
-    std::unique_ptr<test> ptr;
+    template <class Archive>
+    void save(Archive &ar) const
+    {
+        ar(id, data);
+    }
 
-public:
-    RightTest(/* args */);
-    RightTest(int v);
-    RightTest(RightTest &);
-    RightTest(RightTest &&);
-    ~RightTest();
+    template <class Archive>
+    void load(Archive &ar)
+    {
+        ar(id, data);
+    }
 
-    void setValue(int v);
-    int getValue(void);
+    void push(uint32_t, const MyRecord &mr)
+    {
+        data->insert(std::make_pair(100, mr));
+    }
+
+    void print()
+    {
+        std::cout << "ID : " << id << "\n";
+        if (data->empty())
+            return;
+        for (auto &item : *data)
+        {
+            std::cout << item.first << "\t" << item.second << "\n";
+        }
+    }
 };
 
-RightTest::RightTest(/* args */) : value(23)
+void Serialization_XML()
 {
-    cout << "RightTest construct" << endl;
-}
-RightTest::RightTest(int v) : value(v)
-{
-    cout << "RightTest " << v << " construct" << endl;
-}
-RightTest::RightTest(RightTest &r)
-{
-    cout << "RightTest & construct" << endl;
-    value = r.value;
-}
-RightTest::RightTest(RightTest &&r)
-{
-    cout << "RightTest && construct" << endl;
-    value = r.value;
-}
-RightTest::~RightTest()
-{
-    cout << "~RightTest deconstruct" << endl;
+    {
+        std::ofstream os("my.xml");
+
+        cereal::XMLOutputArchive archive(os);
+
+        int age = 26;
+        std::string name = "lizheng";
+
+        //#define CEREAL_NVP(T) ::cereal::make_nvp(#T, T)
+        archive(CEREAL_NVP(age), cereal::make_nvp("Name", name));
+
+        //os.close();  //注意：这里不能显示关闭ofstream，否则序列化无法写入到文件
+    }
+
+    {
+        std::ifstream is("my.xml");
+        cereal::XMLInputArchive archive(is);
+
+        int age;
+        std::string name;
+
+        archive(age, name);
+        std::cout << "Age: " << age << "\n"
+                  << "Name: " << name << "\n";
+    }
 }
 
-void RightTest::setValue(int v)
+void Serialization_JSON()
 {
-    value = v;
+    {
+        std::ofstream os("my.json");
+        cereal::JSONOutputArchive archive(os);
+
+        int age = 26;
+        std::string name = "lizheng";
+
+        archive(CEREAL_NVP(age), cereal::make_nvp("Name", name));
+    }
+
+    {
+        std::ifstream is("my.json");
+        cereal::JSONInputArchive archive(is);
+
+        int age;
+        std::string name;
+
+        archive(age, name);
+        std::cout << "Age: " << age << "\n"
+                  << "Name: " << name << "\n";
+    }
 }
 
-int RightTest::getValue(void)
+void Serialization_Binary()
 {
-    return value;
+    {
+        std::ofstream os("my.binary", std::ios::binary);
+        cereal::BinaryOutputArchive archive(os);
+
+        int age = 26;
+        std::string name = "lizheng";
+
+        archive(CEREAL_NVP(age), CEREAL_NVP(name));
+    }
+    {
+        std::ifstream is("my.binary", std::ios::binary);
+        cereal::BinaryInputArchive archive(is);
+
+        int age;
+        std::string name;
+
+        archive(age, name);
+        std::cout << "Age: " << age << "\n"
+                  << "Name: " << name << "\n";
+    }
 }
 
-RightTest getRightTest()
+void Serialization_Obj()
 {
-    RightTest t;
-    t.setValue(25);
-    return t;
+    {
+        std::ofstream os("obj.cereal", std::ios::binary);
+        cereal::BinaryOutputArchive archive(os);
+
+        MyRecord mr = {1, 2, 3.0};
+
+        SomeData myData(1111);
+        myData.push(100, mr);
+
+        archive(myData);
+    }
+    {
+        std::ifstream is("obj.cereal", std::ios::binary);
+        cereal::BinaryInputArchive archive(is);
+
+        SomeData myData;
+        archive(myData);
+        myData.print();
+    }
+}
+#include <sstream>
+void Serialization_String()
+{
+    std::stringstream ss(new char[1024]);
+    {
+        cereal::BinaryOutputArchive archive(ss);
+
+        MyRecord mr = {1, 2, 55.0};
+
+        SomeData myData(1111);
+        myData.push(100, mr);
+
+        archive(myData);
+        std::cout << ss.rdbuf()->in_avail() << std::endl;
+        std::cout << ss.rdbuf()->str() << std::endl;
+    }
+    {
+        cereal::BinaryInputArchive archive(ss);
+
+        SomeData myData;
+        archive(myData);
+        myData.print();
+    }
 }
 
-void fun(int &x) { cout << "call lvalue ref" << endl; }
-void fun(int &&x) { cout << "call rvalue ref" << endl; }
-void fun(const int &x) { cout << "call const lvalue ref" << endl; }
-void fun(const int &&x) { cout << "call const rvalue ref" << endl; }
-template <typename T>
-void PerfectForward(T &&t)
+#include <iostream>
+#include "streambuffer.hpp"
+void Serialization_Streambuffer()
 {
-    std::cout << "T is a ref type?: " << std::is_reference<T>::value << std::endl;
-    std::cout << "T is a lvalue ref type?: " << std::is_lvalue_reference<T>::value << std::endl;
-    std::cout << "T is a rvalue ref type?: " << std::is_rvalue_reference<T>::value << std::endl;
+    streambuffer sb;
+    std::ostream ss(&sb);
+    {
+        cereal::BinaryOutputArchive archive(ss);
 
-    fun(forward<T>(t));
+        MyRecord mr = {1, 2, 55.0};
+
+        SomeData myData(1111);
+        myData.push(100, mr);
+
+        archive(myData);
+    }
+    // {
+    //     cereal::BinaryInputArchive archive(ss);
+
+    //     SomeData myData;
+    //     archive(myData);
+    //     myData.print();
+    // }
 }
 
+class Req
+{
+public:
+    Req() {}
+    Req(const string &n) : name(n) {}
+
+private:
+    string name;
+    friend std::ostream &operator<<(std::ostream &os, Req &r)
+    {
+        os << r.name;
+        return os;
+    }
+};
+
+void test2(int arg)
+{
+    cout << "测试 2" << endl;
+}
+static void (*f3(int t))(int)
+{
+    cout << "this is f2 " << t << endl;
+    return (test2);
+}
+typedef void (*F_TYPE2)(int);
 int main()
 {
+    F_TYPE2 f = nullptr; // 使用函数指针类型，定义一个函数变量，并将该函数变量置为nullptr(也可以：F_TYPE f = 0;)
+    f = f3(8);           //调用函数f3，返回一个返回类型为void 参数为int的函数地址，这里返回的是test2的函数，
+    f(2);                //执行该函数变量
 
-    // RightTest t;
-    // t.setValue(15);
-    // cout << t.getValue() << endl;
-    // RightTest tl{RightTest(t)};
-    // RightTest tll{getRightTest()};
+    streambuffer sb;
+	// initialize output stream with that output buffer
+	std::ostream out(&sb);
 
-    // cout << tll.getValue() << endl;
-    // // RightTest gRt = getRightTest();
-
-    // PerfectForward(10);           // call rvalue ref
-
-    // int a = 5;
-    // PerfectForward(a);            // call lvalue ref
-    // PerfectForward(move(a));      // call rvalue ref
-
-    // const int b = 8;
-    // PerfectForward(b);           // call const lvalue ref
-    // PerfectForward(move(b));     // call const rvalue ref
-    std::unique_ptr<RightTest> rtPtr{new RightTest(178)};
-    // rtPtr->setValue(26);
-    //std::unique_ptr<test> p{new test()};
-    //rtPtr->ptr = std::move(p);
-    cout << rtPtr->getValue() << endl;
-    std::vector<std::unique_ptr<RightTest>> arr;
-    arr.reserve(3);
-    arr.emplace_back(std::make_unique<RightTest>(34));
-    arr.emplace_back(std::make_unique<RightTest>(38));
-    arr.emplace_back(std::make_unique<RightTest>(64));
-
-    cout << "size:" << arr.size() << " value " << arr[1].get()->getValue() << endl;
-    // std::vector<std::unique_ptr<RightTest>>::iterator iter=arr.begin();
-
-    // for ( ;iter!=arr.end();)
-    // {
-    //     cout << "value "<< iter->get()->getValue() << endl;
-    //     iter = arr.erase(iter);
-    // }
-    // std::for_each(arr.begin(),arr.end(),[&arr](std::unique_ptr<RightTest> &r){
-    //     cout << "value "<< r->getValue() << endl;
-    // });
-
-    std::array<std::map<int, std::string>, 4> arrmap;
-    cout << "size " << arrmap.size() << endl;
-    arrmap[3].emplace(3, "asdf");
-    arrmap[3].emplace(4, "gasdf");
-    arrmap[3].emplace(6, "gasdf");
-    cout << "index 3 size " << arrmap[3].size() << endl;
-    cout << "asdfnasldfj" << endl;
-
-    valarray<char> tv1(12);
-
-    std::string srt = "asdf";
-    cout << srt << endl;
-    try
-    {
-        std::vector<int> vec{0};
-        std::vector<int> a(3, 0);
-
-        for (int i : a)
-        {
-            cout << i << endl;
-        }
-        cout << a.size() << endl;
-        vec.push_back(15);
-        cout << vec.back() << endl;
-    }
-    catch (const std::exception &e)
-    {
-        cout << "error" << e.what() << '\n' << endl;
-    }
-
-    cout <<  "buffer size :" << sizeof(buffer) << endl;
+	out << "31 hexadecimal: "
+	    << std::hex << 31 << std::endl;
     return 0;
 }

@@ -38,7 +38,7 @@ static void signal_int(evutil_socket_t sig, short events, void *ctx)
 
 static void signal_pipe(evutil_socket_t sig, short events, void *ctx)
 {
-
+	cout << "signal_pipe" << endl;
 }
 acceptor::acceptor(std::function<void()> &&f) : base(nullptr), listener(nullptr), signal_event(nullptr), pipe_event(nullptr),holder(nullptr), breakCb(f)
 {

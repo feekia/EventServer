@@ -8,19 +8,15 @@ libevent开发server端
 3.libevent 多线程io
 
 ## 框架层次设计
-payload protocol(json or other)     
-    
-mqtt                              
-        
-TLS                             
-       
-1个acceptor                      
-10 个 event_base loop
+payload protocol(json or other) 
+mqtt
+TLS
+1个acceptor thread
+8 个 event_base loop
 write 和 read分别用不同的event，
-write对应的event有需要时才监控
-1 个read write thread pool                     
+write数据时对应的event有需要时才监控
+1 个read write thread pool
 
-TCP 
 
 ## 读写及缓存设计：
 接收：
@@ -40,17 +36,7 @@ TCP
 如果没有则先进行写，如果写到一半报：EAGAIN，则将剩余数据添加到buffer中，等到EV_WRITE事件重新将数据写出去。
 如果写的时候，又有其他线程想写怎么办？ 能加锁来操作么？答案：可以，因为非阻塞写，写只是把数据拷贝进内核，
 内存的缓存满了，就拷贝不进去了，此时可以监听EV_WRITE事件，操作过程不会消耗多少时间，是可以采用锁来操作的。
-
-
-读写通道：
-channel {}
-fd
-readMutex
-writeMutex
-atomic<bool> w_status; // 写状态，true：有正在写的任务，将数据添加到buffer末尾； false：没有写的任务，将数据写到socket中
-atomic<bool> r_status; // 读状态，true:有尚未读完的数据，将数据读到buffer中； false：没有需要读的数据，直接读出来处理。
-buffer w_buf;
-buffer r_buf;                    
+                  
   
 ## 编译
 ./autofen.sh
