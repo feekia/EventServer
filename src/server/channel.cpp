@@ -95,7 +95,6 @@ void channel::onChannelRead(short events, void *ctx)
             cout << "onRead timeout " << fd << " write buffer size " << wBuf.size() << endl;
             if (stop == true)
             {
-
                 if (state == INIT)
                 {
                     std::unique_lock<std::mutex> lock(cMutex);

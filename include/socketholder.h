@@ -35,7 +35,7 @@ class socketholder : public std::enable_shared_from_this<socketholder>
 private:
 	std::array<raii_event_base, READ_LOOP_MAX> rwatchers;
 	std::array<std::thread, READ_LOOP_MAX> watcher_thread;
-	std::mutex syncMutex;
+	std::mutex syncMutex[READ_LOOP_MAX];
 	std::condition_variable condition;
 	std::atomic_bool isStop;
 	std::array<std::map<evutil_socket_t, std::shared_ptr<channel>>, READ_LOOP_MAX> chns;

@@ -32,8 +32,8 @@ void socketholder::onConnect(evutil_socket_t fd)
         cout << " socketholder is stop" << endl;
         return;
     }
-    std::unique_lock<std::mutex> lock(syncMutex);
     auto id = fd % READ_LOOP_MAX;
+    std::unique_lock<std::mutex> lock(syncMutex[id]);
     cout << "fd is: " << fd << endl;
     std::shared_ptr<channel> pChan = std::make_shared<channel>(shared_from_this(), fd);
 
@@ -47,9 +47,8 @@ void socketholder::onConnect(evutil_socket_t fd)
 void socketholder::onDisconnect(evutil_socket_t fd)
 {
     cout << "socketholder onDisconnect" << endl;
-    std::unique_lock<std::mutex> lock(syncMutex);
-
     auto id = fd % READ_LOOP_MAX;
+    std::unique_lock<std::mutex> lock(syncMutex[id]);
     chns[id].erase(fd);
     if (isStop && chns[id].size() == 0)
     {
@@ -59,9 +58,9 @@ void socketholder::onDisconnect(evutil_socket_t fd)
 }
 void socketholder::closeIdleChannel()
 {
-    std::unique_lock<std::mutex> lock(syncMutex);
     for (int i = 0; i < READ_LOOP_MAX; i++)
     {
+        std::unique_lock<std::mutex> lock(syncMutex[i]);
         if (chns[i].size() == 0)
         {
             event_base_loopexit(rwatchers[i].get(), nullptr);
@@ -93,7 +92,8 @@ void socketholder::waitStop()
 
 std::shared_ptr<channel> socketholder::getChannel(evutil_socket_t fd)
 {
-    std::unique_lock<std::mutex> lock(syncMutex);
+    auto id = fd % READ_LOOP_MAX;
+    std::unique_lock<std::mutex> lock(syncMutex[id]);
     auto pair = chns[fd % READ_LOOP_MAX].find(fd);
     if (pair->second != nullptr)
     {
