@@ -1,6 +1,6 @@
 #include "channel.h"
 #include "socketholder.h"
-channel::channel(std::weak_ptr<socketholder> &&h, evutil_socket_t _fd) : fd(_fd), holder(h)
+channel::channel(std::weak_ptr<socketholder> &&h, evutil_socket_t _fd) : fd(_fd), holder(h), stop(false)
 {
     state.store(INIT);
     std::chrono::system_clock::duration d = std::chrono::system_clock::now().time_since_epoch();
@@ -12,7 +12,7 @@ channel::~channel()
 {
 }
 
-void channel::listenWatcher(raii_event &&revent,raii_event &&wevent)
+void channel::listenWatcher(raii_event &&revent, raii_event &&wevent)
 {
     rEvent = std::move(revent);
     wEvent = std::move(wevent);
@@ -54,12 +54,12 @@ void channel::addWriteEvent(size_t timeout)
 
 bool channel::send(char *buffer, size_t l)
 {
-    if (stop)
+    if (stop == true)
     {
         return false;
     }
     std::unique_lock<std::mutex> lock(cMutex);
-    if (stop)
+    if (stop == true)
     {
         return false;
     }
@@ -151,8 +151,8 @@ void channel::onChannelRead(short events, void *ctx)
         {
             std::unique_lock<std::mutex> lock(cMutex);
             stop = true;
-            removeRWEvent();
             cout << "remote socket is close " << fd << endl;
+            removeRWEvent();
         }
         hld->onDisconnect(fd);
         close(fd);
@@ -160,7 +160,31 @@ void channel::onChannelRead(short events, void *ctx)
         return;
     }
     // TODO: decode read buffer
-    rBuf.toString();
+    // rBuf.toString();
+
+    if (stop == true && state == INIT)
+    {
+        cout << "shutdown write mode IN READ" << fd << endl;
+        shutdown(fd, SHUT_WR);
+        state = SHUTDOWN;
+        rBuf.reset();
+        addReadEvent(READTIMEOUT);
+        return;
+    }
+    else if (stop == true && state == SHUTDOWN)
+    {
+        cout << "shutdown state IN READ: " << fd << endl;
+#if 0
+        rBuf.reset();
+        addReadEvent(READTIMEOUT);
+#else
+        removeRWEvent();
+        hld->onDisconnect(fd);
+        close(fd);
+        state = CLOSE;
+#endif
+        return;
+    }
     send(rBuf.readbegin(), rBuf.size());
     // wBuf.append(rBuf.readbegin(), rBuf.size());
     // wBuf.writesocket(socket_fd);
@@ -208,13 +232,13 @@ void channel::onChannelWrite(short events, void *ctx)
         }
         // cout << "finish write :" << fd << endl;
     }
-    if (stop && state == INIT)
+    if (stop == true && state == INIT)
     {
         cout << "shutdown write mode" << endl;
         shutdown(fd, SHUT_WR);
         state = SHUTDOWN;
     }
-    else if (stop)
+    else if (stop == true)
     {
         cout << "close socket in  onChannelWrite" << endl;
         removeRWEvent();

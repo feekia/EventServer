@@ -8,4 +8,20 @@ core
 */Makefile.in
 Makefile.in
 aclocal.m4
+compile
+config.h.in
+config.h.in~
+depcomp
+missing
 
+Makefile
+config.h
+config.log
+config.status
+src/client/EventClient
+src/client/Makefile
+src/server/EventServer
+src/server/Makefile
+src/test/Makefile
+src/test/test
+stamp-h1

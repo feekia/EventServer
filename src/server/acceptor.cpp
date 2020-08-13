@@ -23,9 +23,10 @@ using namespace std;
 
 typedef void (*f_signal)(evutil_socket_t, short, void *);
 
+static std::atomic<bool> isStop(false);
+
 static void signal_int(evutil_socket_t sig, short events, void *ctx)
 {
-	static bool isStop = false;
 	struct event_base *base = (struct event_base *)ctx;
 	cout << "Caught an signal : " << events << endl;
 	if (!isStop)
@@ -81,6 +82,10 @@ void acceptor::connection_cb(struct evconnlistener *listener, evutil_socket_t fd
 		return;
 
 	acceptor *accp = (acceptor *)ctx;
+	if(isStop){
+		close(fd);
+		return;
+	}
 	evutil_make_socket_nonblocking(fd);
 	accp->holder->onConnect(fd);
 }
@@ -101,6 +106,7 @@ void acceptor::wait()
 {
 	event_base_loop(this->base.get(), EVLOOP_NO_EXIT_ON_EMPTY);
 	cout << " exit the acceptor wait" << endl;
+	listener.reset();
 	onListenBreak();
 	cout << " exit the acceptor wait" << endl;
 }

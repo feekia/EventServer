@@ -121,10 +121,10 @@ public:
 
         for (int i = 1; i < PAGS_MAX + 1; i++)
         {
-            if (i * DEF_LEN + remains() > 0)
+            if (i * DEF_LEN + remains() > l)
             {
                 _data =  static_cast<char *>(realloc(_data, i * DEF_LEN + _capacity));
-                _capacity += _capacity + i * DEF_LEN;
+                _capacity += i * DEF_LEN;
                 memcpy(writebegin(), p, l);
                 _write_index += l;
                 break;
