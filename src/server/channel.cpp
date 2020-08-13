@@ -12,32 +12,44 @@ channel::~channel()
 {
 }
 
-void channel::listenWatcher(raii_event &&revent, raii_event &&wevent)
+void channel::listenWatcher(raii_event &&revent,raii_event &&wevent)
 {
     rEvent = std::move(revent);
     wEvent = std::move(wevent);
-    struct timeval tv ={ 30, 0 };
-    event_add(rEvent.get(), &tv); // add read event into event_baseF
+    struct timeval tv = {30, 0};
+    int ret = event_add(rEvent.get(), &tv); // add read event into event_baseF
+    if (ret != 0)
+    {
+        cout << "listenWatcher event error :" << fd << endl;
+    }
 }
 void channel::addReadEvent(size_t timeout)
 {
-    struct timeval tv ={ 20, 0 };
+    struct timeval tv = {20, 0};
     if (timeout > 0)
     {
         tv.tv_sec = timeout;
     }
 
-    event_add(rEvent.get(), &tv);
+    int ret = event_add(rEvent.get(), &tv);
+    if (ret != 0)
+    {
+        cout << "add read event error :" << fd << endl;
+    }
 }
 
 void channel::addWriteEvent(size_t timeout)
 {
-    struct timeval tv ={ 10, 0 };
+    struct timeval tv = {10, 0};
     if (timeout > 0)
     {
         tv.tv_sec = timeout;
     }
-    event_add(wEvent.get(), &tv);
+    int ret = event_add(wEvent.get(), &tv);
+    if (ret != 0)
+    {
+        cout << "add write event error :" << fd << endl;
+    }
 }
 
 bool channel::send(char *buffer, size_t l)
@@ -73,7 +85,7 @@ void channel::onChannelRead(short events, void *ctx)
     {
         return;
     }
-    cout << "onChannelRead start " << fd << endl;
+    // cout << "onChannelRead start " << fd << endl;
     if (events & EV_TIMEOUT)
     {
         // 判斷心跳是否超時
@@ -82,9 +94,7 @@ void channel::onChannelRead(short events, void *ctx)
             {
                 std::unique_lock<std::mutex> lock(cMutex);
                 cout << "onRead timeout Expired " << fd << endl;
-                removeWriteEvent();
-                removeReadEvent();
-
+                removeRWEvent();
             }
             hld->onDisconnect(fd);
             close(fd);
@@ -100,22 +110,22 @@ void channel::onChannelRead(short events, void *ctx)
                     std::unique_lock<std::mutex> lock(cMutex);
                     if (wBuf.size() == 0)
                     {
+                        cout << "shutdown write in onChannelRead, socket:  " << fd << endl;
                         shutdown(fd, SHUT_WR);
                         state = SHUTDOWN;
-                        addReadEvent(READTIMEOUT);
                     }
                     else
                     {
                         wBuf.writesocket(fd);
                         addWriteEvent(WRITETIMEOUT);
-                        addReadEvent(READTIMEOUT);
                     }
+                    addReadEvent(READTIMEOUT);
                     return;
                 }
                 else if (state == SHUTDOWN)
                 {
-                    removeReadEvent();
-                    removeWriteEvent();
+                    cout << "nomal close, socket:  " << fd << endl;
+                    removeRWEvent();
                     hld->onDisconnect(fd);
                     close(fd);
                     state = CLOSE;
@@ -138,12 +148,11 @@ void channel::onChannelRead(short events, void *ctx)
     auto size = rBuf.readsocket(fd);
     if (0 == size || -1 == size)
     {
-        cout << "remote socket is close for socket: " << fd << endl;
         {
             std::unique_lock<std::mutex> lock(cMutex);
             stop = true;
-            removeReadEvent();
-            removeWriteEvent();
+            removeRWEvent();
+            cout << "remote socket is close " << fd << endl;
         }
         hld->onDisconnect(fd);
         close(fd);
@@ -162,6 +171,7 @@ void channel::onChannelRead(short events, void *ctx)
 
 void channel::onChannelWrite(short events, void *ctx)
 {
+    // cout << "onChannelWrite start: " << fd << endl;
     std::shared_ptr<socketholder> hld = holder.lock();
     if (hld == nullptr)
     {
@@ -172,9 +182,8 @@ void channel::onChannelWrite(short events, void *ctx)
         {
             std::unique_lock<std::mutex> lock(cMutex);
             stop = true;
-            cout << "write timeout" << endl;
-            removeWriteEvent();
-            removeReadEvent();
+            cout << "write timeout close socket" << endl;
+            removeRWEvent();
         }
         hld->onDisconnect(fd);
         close(fd);
@@ -197,17 +206,18 @@ void channel::onChannelWrite(short events, void *ctx)
             cout << "not finish write" << endl;
             return;
         }
+        // cout << "finish write :" << fd << endl;
     }
     if (stop && state == INIT)
     {
-        //shutdown write mode
+        cout << "shutdown write mode" << endl;
         shutdown(fd, SHUT_WR);
         state = SHUTDOWN;
     }
     else if (stop)
     {
-        removeWriteEvent();
-        removeReadEvent();
+        cout << "close socket in  onChannelWrite" << endl;
+        removeRWEvent();
         hld->onDisconnect(fd);
         close(fd);
         state = CLOSE;

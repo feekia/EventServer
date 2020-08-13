@@ -42,6 +42,7 @@ private:
 	threadpools pools;
 	friend channel;
 	static socketholder *instance;
+
 private:
 	socketholder();
 

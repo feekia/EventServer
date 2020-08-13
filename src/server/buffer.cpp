@@ -15,12 +15,12 @@ ssize_t buffer::readsocket(evutil_socket_t fd)
     do
     {
         rSize = read(fd, (void *)buffer, 512);
-        cout << "rSize : " <<rSize << endl;
+        if (rSize == 0)
+            cout << "rSize : " << rSize << endl;
         if (rSize > 0)
         {
             rc += rSize;
             append(buffer, rSize);
-            
         }
     } while ((rSize == -1 && errno == EINTR) || (rSize == 512));
 
@@ -38,7 +38,8 @@ ssize_t buffer::writesocket(evutil_socket_t fd)
     ssize_t wSize = 0;
     ssize_t rc = 0;
 
-    if(size() <= 0){
+    if (size() <= 0)
+    {
         return 0;
     }
     do
@@ -50,7 +51,8 @@ ssize_t buffer::writesocket(evutil_socket_t fd)
             _read_index += wSize;
         }
     } while ((wSize == -1 && errno == EINTR) || (size() > 0 && wSize > 0));
-    if(wSize == EAGAIN && size() > 0){
+    if (wSize == EAGAIN && size() > 0)
+    {
         // TODO: event_add
     }
 

@@ -50,13 +50,26 @@ public:
 
     void addReadEvent(size_t timeout);
     void addWriteEvent(size_t timeout);
-    void removeReadEvent()
+    void removeRWEvent()
     {
-        event_del(rEvent.get());
-    }
-    void removeWriteEvent()
-    {
-        event_del(wEvent.get());
+        int wpending = event_pending(wEvent.get(), EV_WRITE | EV_TIMEOUT, nullptr);
+        if (wpending == (EV_WRITE | EV_TIMEOUT))
+        {
+            int ret = event_del(wEvent.get());
+            if (ret != 0)
+            {
+                cout << "remove write event error :" << fd << endl;
+            }
+        }
+        int rpending = event_pending(rEvent.get(), EV_READ | EV_TIMEOUT, nullptr);
+        if (rpending == (EV_READ | EV_TIMEOUT))
+        {
+            int ret = event_del(rEvent.get());
+            if (ret != 0)
+            {
+                cout << "remove read event error :" << fd << endl;
+            }
+        }
     }
     bool send(char *buffer, size_t l);
     void onDisconnect(evutil_socket_t fd);

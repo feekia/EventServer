@@ -29,14 +29,21 @@ using namespace std;
 
 #if 1
 #include "acceptor.h"
+
+void errHandler(int err){
+	cout << "error in lv: " << err << endl;
+}
 int main(int argc, char **argv)
 {
+	// event_enable_debug_logging(EVENT_DBG_ALL);
+	event_set_fatal_callback(errHandler);
 	evthread_use_pthreads();
 	std::unique_ptr<acceptor> ptr_acceptor = std::make_unique<acceptor>([]() {
 		cout << " break acceptor in callback" << endl;
 	});
 	ptr_acceptor->init(9950);
 
+	cout << "EventServer startup" << endl;
 	ptr_acceptor->wait();
 	cout << "main thread exit" << endl;
 	ptr_acceptor.reset();

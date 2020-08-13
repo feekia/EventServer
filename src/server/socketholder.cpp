@@ -16,7 +16,7 @@ socketholder::socketholder() : isStop(false), pools(5)
         watcher_thread[i] = std::thread([this, i]() {
             event_base_loop(rwatchers[i].get(), EVLOOP_NO_EXIT_ON_EMPTY);
             cout << "in loop id: " << i << endl;
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+            // std::this_thread::sleep_for(std::chrono::seconds(1));
         });
     }
 }
@@ -34,19 +34,19 @@ void socketholder::onConnect(evutil_socket_t fd)
     }
     auto id = fd % READ_LOOP_MAX;
     std::unique_lock<std::mutex> lock(syncMutex[id]);
-    cout << "fd is: " << fd << endl;
+    cout << "new connection fd: " << fd << endl;
     std::shared_ptr<channel> pChan = std::make_shared<channel>(shared_from_this(), fd);
 
     auto base = rwatchers[fd % READ_LOOP_MAX].get();
     auto r_event = obtain_event(base, fd, EV_READ | EV_TIMEOUT, onRead, nullptr);
     auto w_event = obtain_event(base, fd, EV_WRITE | EV_TIMEOUT, onWrite, nullptr);
-    pChan->listenWatcher(std::move(r_event), std::move(w_event));
+    pChan->listenWatcher(std::move(r_event),std::move(w_event));
     chns[id].emplace(fd, pChan->shared_from_this());
 }
 
 void socketholder::onDisconnect(evutil_socket_t fd)
 {
-    cout << "socketholder onDisconnect" << endl;
+    cout << "socketholder onDisconnect fd: " << fd << endl;
     auto id = fd % READ_LOOP_MAX;
     std::unique_lock<std::mutex> lock(syncMutex[id]);
     chns[id].erase(fd);
@@ -127,7 +127,6 @@ void onRead(evutil_socket_t socket_fd, short events, void *ctx)
 }
 void onWrite(evutil_socket_t socket_fd, short events, void *ctx)
 {
-    cout << "onWrite start" << endl;
     auto sptr = socketholder::getShared_ptr();
     if (sptr == nullptr)
     {

@@ -81,6 +81,7 @@ void acceptor::connection_cb(struct evconnlistener *listener, evutil_socket_t fd
 		return;
 
 	acceptor *accp = (acceptor *)ctx;
+	evutil_make_socket_nonblocking(fd);
 	accp->holder->onConnect(fd);
 }
 
