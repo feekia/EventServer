@@ -23,7 +23,9 @@ void channel::listenWatcher(raii_event &&revent, raii_event &&wevent)
     if (ret != 0)
     {
         cout << "listenWatcher event error :" << fd << endl;
+        return;
     }
+    rFinish = false;
 }
 void channel::addReadEvent(size_t timeout)
 {
@@ -37,7 +39,9 @@ void channel::addReadEvent(size_t timeout)
     if (ret != 0)
     {
         cout << "add read event error :" << fd << endl;
+        return;
     }
+    rFinish = false;
 }
 
 void channel::addWriteEvent(size_t timeout)
@@ -57,6 +61,7 @@ void channel::addWriteEvent(size_t timeout)
     {
         cout << "add write event error :" << fd << endl;
     }
+    wFinish = false;
 }
 
 int32_t channel::send(char *buffer, size_t l)
@@ -89,11 +94,13 @@ void channel::onDisconnect(evutil_socket_t fd)
 
 void channel::onChannelRead(short events, void *ctx)
 {
+    rFinish = true;
     std::shared_ptr<socketholder> hld = holder.lock();
     if (hld == nullptr)
     {
         return;
     }
+    
     // cout << "onChannelRead start " << fd << endl;
     if (events & EV_TIMEOUT)
     {
@@ -128,6 +135,8 @@ void channel::onChannelRead(short events, void *ctx)
                 state = CLOSE;
             }
             return;
+        }else{
+            addReadEvent(READTIMEOUT);
         }
     }
     else if (events & EV_READ)
@@ -150,6 +159,7 @@ void channel::onChannelRead(short events, void *ctx)
         }
 
         // TODO: rBuf notify
+        rBuf.toString();
         send(rBuf.readbegin(), rBuf.size());
         rBuf.reset();
         if (stop == true)
@@ -192,6 +202,7 @@ void channel::onChannelRead(short events, void *ctx)
 
 void channel::onChannelWrite(short events, void *ctx)
 {
+    wFinish = true;
     // cout << "onChannelWrite start: " << fd << endl;
     std::shared_ptr<socketholder> hld = holder.lock();
     if (hld == nullptr)
