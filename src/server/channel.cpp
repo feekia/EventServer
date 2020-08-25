@@ -6,6 +6,8 @@ channel::channel(std::weak_ptr<socketholder> &&h, evutil_socket_t _fd) : fd(_fd)
     std::chrono::system_clock::duration d = std::chrono::system_clock::now().time_since_epoch();
     std::chrono::seconds sec = std::chrono::duration_cast<std::chrono::seconds>(d);
     timestamp = sec.count();
+    wFinish = true;
+    rFinish = true;
 }
 
 channel::~channel()
@@ -45,6 +47,11 @@ void channel::addWriteEvent(size_t timeout)
     {
         tv.tv_sec = timeout;
     }
+    int wpending = event_pending(wEvent.get(), EV_WRITE | EV_TIMEOUT, nullptr);
+    if (wpending == (EV_WRITE | EV_TIMEOUT))
+    {
+        return;
+    }
     int ret = event_add(wEvent.get(), &tv);
     if (ret != 0)
     {
@@ -52,21 +59,23 @@ void channel::addWriteEvent(size_t timeout)
     }
 }
 
-bool channel::send(char *buffer, size_t l)
+int32_t channel::send(char *buffer, size_t l)
 {
-    if (stop == true)
-    {
-        return false;
-    }
     std::unique_lock<std::mutex> lock(cMutex);
     if (stop == true)
     {
-        return false;
+        return 0;
     }
+
     wBuf.append(buffer, l);
-    wBuf.writesocket(fd);
-    addWriteEvent(WRITETIMEOUT);
-    return true;
+    if (wFinish == false)
+    {
+        std::thread([chan = shared_from_this()]() {
+            chan->send_internal();
+        });
+    }
+
+    return l;
 }
 void channel::onDisconnect(evutil_socket_t fd)
 {
@@ -89,108 +98,96 @@ void channel::onChannelRead(short events, void *ctx)
     if (events & EV_TIMEOUT)
     {
         // 判斷心跳是否超時
-        if (isHeartBrakeExpired())
+        if (isHeartBrakeExpired() || stop == true)
         {
             {
                 std::unique_lock<std::mutex> lock(cMutex);
                 cout << "onRead timeout Expired " << fd << endl;
+                stop = true;
+                if (wFinish == true)
+                {
+                    if (state == INIT)
+                    {
+                        cout << "shutdown write mode IN READ" << fd << endl;
+                        shutdown(fd, SHUT_WR);
+                        state = SHUTDOWN;
+                        addReadEvent(SHUTDOWNTIMEOUT);
+                        return;
+                    } // else will goto onDisconnect
+                }
+                else
+                {
+                    addReadEvent(SHUTDOWNTIMEOUT);
+                    return;
+                }
+            }
+            // onDisconnect
+            {
+                hld->onDisconnect(fd);
+                close(fd);
+                state = CLOSE;
+            }
+            return;
+        }
+    }
+    else if (events & EV_READ)
+    {
+        updateHearBrakeExpired();
+        auto size = rBuf.readsocket(fd);
+        if (0 == size || -1 == size)
+        {
+            {
+                std::unique_lock<std::mutex> lock(cMutex);
+                stop = true;
+                cout << "remote socket is close " << fd << endl;
                 removeRWEvent();
+                wFinish = true;
             }
             hld->onDisconnect(fd);
             close(fd);
             state = CLOSE;
+            return;
+        }
+
+        // TODO: rBuf notify
+        send(rBuf.readbegin(), rBuf.size());
+        rBuf.reset();
+        if (stop == true)
+        {
+            {
+                std::unique_lock<std::mutex> lock(cMutex);
+                if (wFinish == true)
+                {
+                    if (state == INIT)
+                    {
+                        cout << "shutdown write mode IN READ" << fd << endl;
+                        shutdown(fd, SHUT_WR);
+                        state = SHUTDOWN;
+                        addReadEvent(SHUTDOWNTIMEOUT);
+                        return;
+                    } // else will goto onDisconnect
+                }
+                else
+                {
+                    addReadEvent(SHUTDOWNTIMEOUT);
+                    return;
+                }
+            }
+            // onDisconnect
+            {
+                hld->onDisconnect(fd);
+                close(fd);
+                state = CLOSE;
+            }
+            return;
         }
         else
         {
-            cout << "onRead timeout " << fd << " write buffer size " << wBuf.size() << endl;
-            if (stop == true)
-            {
-                if (state == INIT)
-                {
-                    std::unique_lock<std::mutex> lock(cMutex);
-                    if (wBuf.size() == 0)
-                    {
-                        cout << "shutdown write in onChannelRead, socket:  " << fd << endl;
-                        shutdown(fd, SHUT_WR);
-                        state = SHUTDOWN;
-                    }
-                    else
-                    {
-                        wBuf.writesocket(fd);
-                        addWriteEvent(WRITETIMEOUT);
-                    }
-                    addReadEvent(READTIMEOUT);
-                    return;
-                }
-                else if (state == SHUTDOWN)
-                {
-                    cout << "nomal close, socket:  " << fd << endl;
-                    removeRWEvent();
-                    hld->onDisconnect(fd);
-                    close(fd);
-                    state = CLOSE;
-                }
-                return;
-            }
-
             addReadEvent(READTIMEOUT);
         }
 
         return;
     }
-
-    updateHearBrakeExpired();
-    if (state == CLOSE)
-    {
-        cout << "when read task run, socket is close,so return" << endl;
-        return;
-    }
-    auto size = rBuf.readsocket(fd);
-    if (0 == size || -1 == size)
-    {
-        {
-            std::unique_lock<std::mutex> lock(cMutex);
-            stop = true;
-            cout << "remote socket is close " << fd << endl;
-            removeRWEvent();
-        }
-        hld->onDisconnect(fd);
-        close(fd);
-        state = CLOSE;
-        return;
-    }
-    // TODO: decode read buffer
-    // rBuf.toString();
-
-    if (stop == true && state == INIT)
-    {
-        cout << "shutdown write mode IN READ" << fd << endl;
-        shutdown(fd, SHUT_WR);
-        state = SHUTDOWN;
-        rBuf.reset();
-        addReadEvent(READTIMEOUT);
-        return;
-    }
-    else if (stop == true && state == SHUTDOWN)
-    {
-        cout << "shutdown state IN READ: " << fd << endl;
-#if 0
-        rBuf.reset();
-        addReadEvent(READTIMEOUT);
-#else
-        removeRWEvent();
-        hld->onDisconnect(fd);
-        close(fd);
-        state = CLOSE;
-#endif
-        return;
-    }
-    send(rBuf.readbegin(), rBuf.size());
-    // wBuf.append(rBuf.readbegin(), rBuf.size());
-    // wBuf.writesocket(socket_fd);
-    // addWriteEvent(WRITETIMEOUT);
-    rBuf.reset();
-    addReadEvent(READTIMEOUT);
 }
 
 void channel::onChannelWrite(short events, void *ctx)
@@ -201,61 +198,34 @@ void channel::onChannelWrite(short events, void *ctx)
     {
         return;
     }
+
     if (events & EV_TIMEOUT)
     {
-        {
-            std::unique_lock<std::mutex> lock(cMutex);
-            stop = true;
-            cout << "write timeout close socket" << endl;
-            removeRWEvent();
-        }
-        hld->onDisconnect(fd);
-        close(fd);
-        state = CLOSE;
-        return;
-    }
-    updateHearBrakeExpired();
-
-    if (state == CLOSE)
-    {
-        cout << "when write task run, socket is close,so return" << endl;
-        return;
-    }
-    {
         std::unique_lock<std::mutex> lock(cMutex);
-        if (wBuf.size() > 0)
+        stop = true;
+        cout << "write timeout close socket" << endl;
+        wBuf.reset();
+        wFinish = true;
+        state = SHUTDOWN;
+        return;
+    }
+    else if (events & EV_WRITE)
+    {
+        if (state != INIT)
         {
-            auto size = wBuf.writesocket(fd);
-            addWriteEvent(WRITETIMEOUT);
-            cout << "not finish write" << endl;
+            wFinish = true;
+            cout << "socket is closing or closed,so return" << endl;
             return;
         }
-        // cout << "finish write :" << fd << endl;
-    }
-    if (stop == true && state == INIT)
-    {
-        cout << "shutdown write mode" << endl;
-        shutdown(fd, SHUT_WR);
-        state = SHUTDOWN;
-    }
-    else if (stop == true)
-    {
-        cout << "close socket in  onChannelWrite" << endl;
-        removeRWEvent();
-        hld->onDisconnect(fd);
-        close(fd);
-        state = CLOSE;
+        updateHearBrakeExpired();
+        int ret = send_internal();
+        if (ret == -1)
+        { // BADEF
+            wFinish = true;
+        }
     }
 }
-
 void channel::closeSafty()
 {
-    std::unique_lock<std::mutex> lock(cMutex);
     stop = true;
-    if (wBuf.size() <= 0)
-    {
-        cout << "closeSafty :" << fd << endl;
-        shutdown(fd, SHUT_WR);
-        state = SHUTDOWN;
-    }
 }

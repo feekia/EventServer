@@ -51,9 +51,14 @@ ssize_t buffer::writesocket(evutil_socket_t fd)
             _read_index += wSize;
         }
     } while ((wSize == -1 && errno == EINTR) || (size() > 0 && wSize > 0));
-    if (wSize == EAGAIN && size() > 0)
+    // if (wSize == EAGAIN && size() > 0)
+    // {
+    //     // TODO: event_add
+    // }
+
+    if (wSize == -1 && errno == EBADF)
     {
-        // TODO: event_add
+        return -1;
     }
 
     return rc;

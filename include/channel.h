@@ -24,8 +24,9 @@ enum socket_state
 
 enum timeout_config
 {
-    READTIMEOUT = 20,
+    SHUTDOWNTIMEOUT = 5,
     WRITETIMEOUT = 10,
+    READTIMEOUT = 20,
     HEARTBITTIMEOUT = 60
 };
 class channel : public std::enable_shared_from_this<channel>
@@ -35,6 +36,8 @@ private:
     std::weak_ptr<socketholder> holder;
     std::mutex cMutex;
     std::atomic<bool> stop;
+    std::atomic<bool> rFinish;
+    std::atomic<bool> wFinish;
     std::atomic<int8_t> state;
     buffer wBuf;
     buffer rBuf;
@@ -71,13 +74,18 @@ public:
             }
         }
     }
-    bool send(char *buffer, size_t l);
+    int32_t send(char *buffer, size_t l);
     void onDisconnect(evutil_socket_t fd);
     std::shared_ptr<channel> share()
     {
         return shared_from_this();
     }
 
+    void onChannelRead(short events, void *ctx);
+    void onChannelWrite(short events, void *ctx);
+
+    void closeSafty();
+private:
     bool isHeartBrakeExpired()
     {
         std::chrono::system_clock::duration d = std::chrono::system_clock::now().time_since_epoch();
@@ -91,8 +99,26 @@ public:
         timestamp = sec.count();
     }
 
-    void onChannelRead(short events, void *ctx);
-    void onChannelWrite(short events, void *ctx);
-    void closeSafty();
+    bool send_internal()
+    {
+        std::unique_lock<std::mutex> lock(cMutex);
+        if (wBuf.size() > 0)
+        {
+            wFinish = false;
+            wBuf.writesocket(fd);
+            addWriteEvent(WRITETIMEOUT);
+        }
+        else
+        {
+            wFinish = true;
+            if (stop == true && state == INIT)
+            {
+                cout << "send_internal: shutdown write mode" << endl;
+                shutdown(fd, SHUT_WR);
+                state = SHUTDOWN;
+            }
+        }
+        return true;
+    }
 };
 #endif

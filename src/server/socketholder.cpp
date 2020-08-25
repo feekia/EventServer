@@ -8,7 +8,7 @@ using namespace std;
 void onRead(evutil_socket_t socket_fd, short events, void *ctx);
 void onWrite(evutil_socket_t socket_fd, short events, void *ctx);
 socketholder *socketholder::instance = nullptr;
-socketholder::socketholder() : isStop(false), pools(5)
+socketholder::socketholder() : isStop(false), pools(24)
 {
     for (int i = 0; i < READ_LOOP_MAX; i++)
     {
@@ -36,12 +36,12 @@ void socketholder::onConnect(evutil_socket_t fd)
     std::unique_lock<std::mutex> lock(syncMutex[id]);
     cout << "new connection fd: " << fd << endl;
     std::shared_ptr<channel> pChan = std::make_shared<channel>(shared_from_this(), fd);
+    chns[id].emplace(fd, pChan);
 
     auto base = rwatchers[fd % READ_LOOP_MAX].get();
-    auto r_event = obtain_event(base, fd, EV_READ | EV_TIMEOUT, onRead, nullptr);
-    auto w_event = obtain_event(base, fd, EV_WRITE | EV_TIMEOUT, onWrite, nullptr);
-    pChan->listenWatcher(std::move(r_event),std::move(w_event));
-    chns[id].emplace(fd, pChan->shared_from_this());
+    auto r_event = obtain_event(base, fd, EV_READ | EV_TIMEOUT, onRead, pChan.get());
+    auto w_event = obtain_event(base, fd, EV_WRITE | EV_TIMEOUT, onWrite, pChan.get());
+    pChan->listenWatcher(std::move(r_event), std::move(w_event));
 }
 
 void socketholder::onDisconnect(evutil_socket_t fd)
@@ -65,13 +65,6 @@ void socketholder::closeIdleChannel()
         {
             event_base_loopexit(rwatchers[i].get(), nullptr);
             cout << "closeIdleChannel exit loop id: " << i << endl;
-        }
-        else
-        {
-            for (auto &kv : chns[i])
-            {
-                kv.second->closeSafty();
-            }
         }
     }
 }
@@ -114,11 +107,10 @@ void onRead(evutil_socket_t socket_fd, short events, void *ctx)
         return;
     }
 
-    auto chan = sptr->getChannel(socket_fd);
-    if (chan == nullptr)
+    auto chan = ((channel *)ctx)->shared_from_this();
+    if (sptr->isStop)
     {
-        cout << "onRead chan nullptr" << endl;
-        return;
+        chan->closeSafty();
     }
 
     sptr->pools.enqueue([chan, events]() {
@@ -132,12 +124,12 @@ void onWrite(evutil_socket_t socket_fd, short events, void *ctx)
     {
         return;
     }
-
-    auto chan = sptr->getChannel(socket_fd);
-    if (chan == nullptr)
+    auto chan = ((channel *)ctx)->shared_from_this();
+    if (sptr->isStop)
     {
-        return;
+        chan->closeSafty();
     }
+
     sptr->pools.enqueue([chan, events]() {
         chan->onChannelWrite(events, nullptr);
     });
