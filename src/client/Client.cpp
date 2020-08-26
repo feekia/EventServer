@@ -39,8 +39,6 @@ static void onSignal(evutil_socket_t sig, short events, void *ctx)
 
 static void onRead(evutil_socket_t socket_fd, short events, void *ctx)
 {
-	LOG(__func__);
-
 	char buffer[BUF_SIZE] = {0};
 	int size = TEMP_FAILURE_RETRY(read(socket_fd, buffer, BUF_SIZE));
 	if (0 == size || -1 == size)
@@ -152,7 +150,7 @@ int main()
 			{
 				evutil_socket_t fd = it->first;
 				write(fd, data, strlen(data) + 1);
-				cout << "SEND :" << fd << endl;
+				// cout << "SEND :" << fd << endl;
 			}
 		}
 	});

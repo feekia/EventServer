@@ -15,8 +15,8 @@ ssize_t buffer::readsocket(evutil_socket_t fd)
     do
     {
         rSize = read(fd, (void *)buffer, 512);
-        if (rSize == 0)
-            cout << "rSize : " << rSize << endl;
+        // if (rSize == 0)
+        //     cout << "rSize : " << rSize << endl;
         if (rSize > 0)
         {
             rc += rSize;

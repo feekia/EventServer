@@ -69,13 +69,18 @@ int32_t channel::send(char *buffer, size_t l)
     std::unique_lock<std::mutex> lock(cMutex);
     if (stop == true)
     {
-        return 0;
+        return -1;
     }
 
     wBuf.append(buffer, l);
     if (wFinish == false)
     {
-        std::thread([chan = shared_from_this()]() {
+        std::shared_ptr<socketholder> hld = holder.lock();
+        if (hld == nullptr)
+        {
+            return -1;
+        }
+        hld->pools.enqueue([chan = shared_from_this()]() {
             chan->send_internal();
         });
     }
@@ -100,7 +105,7 @@ void channel::onChannelRead(short events, void *ctx)
     {
         return;
     }
-    
+
     // cout << "onChannelRead start " << fd << endl;
     if (events & EV_TIMEOUT)
     {
@@ -135,7 +140,9 @@ void channel::onChannelRead(short events, void *ctx)
                 state = CLOSE;
             }
             return;
-        }else{
+        }
+        else
+        {
             addReadEvent(READTIMEOUT);
         }
     }
@@ -148,7 +155,7 @@ void channel::onChannelRead(short events, void *ctx)
             {
                 std::unique_lock<std::mutex> lock(cMutex);
                 stop = true;
-                cout << "remote socket is close " << fd << endl;
+                // cout << "remote socket is close " << fd << endl;
                 removeRWEvent();
                 wFinish = true;
             }
@@ -159,8 +166,9 @@ void channel::onChannelRead(short events, void *ctx)
         }
 
         // TODO: rBuf notify
-        rBuf.toString();
-        send(rBuf.readbegin(), rBuf.size());
+        // rBuf.toString();
+        wBuf.append(rBuf.readbegin(), rBuf.size());
+        wBuf.writesocket(fd);
         rBuf.reset();
         if (stop == true)
         {
@@ -229,8 +237,8 @@ void channel::onChannelWrite(short events, void *ctx)
             return;
         }
         updateHearBrakeExpired();
-        int ret = send_internal();
-        if (ret == -1)
+        bool ret = send_internal();
+        if (ret == false)
         { // BADEF
             wFinish = true;
         }

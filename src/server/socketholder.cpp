@@ -34,7 +34,7 @@ void socketholder::onConnect(evutil_socket_t fd)
     }
     auto id = fd % READ_LOOP_MAX;
     std::unique_lock<std::mutex> lock(syncMutex[id]);
-    cout << "new connection fd: " << fd << endl;
+    // cout << "new connection fd: " << fd << endl;
     std::shared_ptr<channel> pChan = std::make_shared<channel>(shared_from_this(), fd);
     chns[id].emplace(fd, pChan);
 
@@ -107,15 +107,22 @@ void onRead(evutil_socket_t socket_fd, short events, void *ctx)
         return;
     }
 
-    auto chan = ((channel *)ctx)->shared_from_this();
-    if (sptr->isStop)
+    try
     {
-        chan->closeSafty();
-    }
+        auto chan = ((channel *)ctx)->shared_from_this();
+        if (sptr->isStop)
+        {
+            chan->closeSafty();
+        }
 
-    sptr->pools.enqueue([chan, events]() {
-        chan->onChannelRead(events, nullptr);
-    });
+        sptr->pools.enqueue([chan, events]() {
+            chan->onChannelRead(events, nullptr);
+        });
+    }
+    catch (const std::bad_weak_ptr &e)
+    {
+        std::cerr << e.what() << '\n';
+    }
 }
 void onWrite(evutil_socket_t socket_fd, short events, void *ctx)
 {
@@ -124,13 +131,20 @@ void onWrite(evutil_socket_t socket_fd, short events, void *ctx)
     {
         return;
     }
-    auto chan = ((channel *)ctx)->shared_from_this();
-    if (sptr->isStop)
+    try
     {
-        chan->closeSafty();
-    }
+        auto chan = ((channel *)ctx)->shared_from_this();
+        if (sptr->isStop)
+        {
+            chan->closeSafty();
+        }
 
-    sptr->pools.enqueue([chan, events]() {
-        chan->onChannelWrite(events, nullptr);
-    });
+        sptr->pools.enqueue([chan, events]() {
+            chan->onChannelWrite(events, nullptr);
+        });
+    }
+    catch (const std::bad_weak_ptr &e)
+    {
+        std::cerr << e.what() << '\n';
+    }
 }

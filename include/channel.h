@@ -105,7 +105,11 @@ private:
         if (wBuf.size() > 0)
         {
             wFinish = false;
-            wBuf.writesocket(fd);
+            int ret = wBuf.writesocket(fd);
+            if(ret == -1){
+                wFinish = true;
+                return false;
+            }
             addWriteEvent(WRITETIMEOUT);
         }
         else

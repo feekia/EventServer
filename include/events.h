@@ -22,7 +22,6 @@
 struct type##_deleter {\
     void operator()(struct type* ob) {\
         type##_free(ob);\
-        std::cout << "deleter: " << #type << std::endl; \
     }\
 };\
 /* unique ptr typedef */\
