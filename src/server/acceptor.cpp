@@ -41,7 +41,7 @@ static void signal_pipe(evutil_socket_t sig, short events, void *ctx)
 {
 	cout << "signal_pipe: " << sig << endl;
 }
-acceptor::acceptor(std::function<void()> &&f) : base(nullptr), listener(nullptr), signal_event(nullptr), pipe_event(nullptr),holder(nullptr), breakCb(f)
+acceptor::acceptor(std::function<void()> &&f) : base(nullptr), listener(nullptr), signal_event(nullptr), pipe_event(nullptr), holder(nullptr), breakCb(f)
 {
 }
 
@@ -75,14 +75,36 @@ int acceptor::init(int port)
 	holder = std::shared_ptr<socketholder>(socketholder::getInstance());
 	return 0;
 }
-
+thread_local int con_cnt = 0;
+thread_local std::chrono::system_clock::duration locald;
 void acceptor::connection_cb(struct evconnlistener *listener, evutil_socket_t fd, struct sockaddr *sa, int socklen, void *ctx)
 {
 	if (ctx == nullptr)
 		return;
+	
+
+	con_cnt++;
+	if(con_cnt == 1){
+		locald= std::chrono::system_clock::now().time_since_epoch();
+	}
+
+	if (con_cnt > 20)
+	{
+		std::chrono::system_clock::duration d = std::chrono::system_clock::now().time_since_epoch();
+		std::chrono::milliseconds msec = std::chrono::duration_cast<std::chrono::milliseconds>(d);
+		std::chrono::milliseconds localmsec = std::chrono::duration_cast<std::chrono::milliseconds>(locald);
+		int64_t diff = msec.count() - localmsec.count();
+		if (diff > 10 * 1000)
+		{
+			cout << " connect tid: " << std::this_thread::get_id() << " con_cnt : " << con_cnt << endl;
+			locald = std::chrono::system_clock::now().time_since_epoch();
+			con_cnt= 0;
+		}
+	}
 
 	acceptor *accp = (acceptor *)ctx;
-	if(isStop){
+	if (isStop)
+	{
 		close(fd);
 		return;
 	}

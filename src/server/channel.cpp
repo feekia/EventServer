@@ -96,7 +96,8 @@ void channel::onDisconnect(evutil_socket_t fd)
     }
     hld->onDisconnect(fd);
 }
-
+thread_local int cnt = 0;
+thread_local std::chrono::system_clock::duration locald_r;
 void channel::onChannelRead(short events, void *ctx)
 {
     rFinish = true;
@@ -148,6 +149,24 @@ void channel::onChannelRead(short events, void *ctx)
     }
     else if (events & EV_READ)
     {
+        cnt++;
+        if(cnt == 1){
+            locald_r = std::chrono::system_clock::now().time_since_epoch();
+        }
+
+        if (cnt > 20)
+        {
+            std::chrono::system_clock::duration d = std::chrono::system_clock::now().time_since_epoch();
+            std::chrono::milliseconds msec = std::chrono::duration_cast<std::chrono::milliseconds>(d);
+            std::chrono::milliseconds localmsec = std::chrono::duration_cast<std::chrono::milliseconds>(locald_r);
+            int64_t diff = msec.count() - localmsec.count();
+            if(diff > 10 * 1000){
+                cout << "qps tid: " << std::this_thread::get_id() << " cnt : " << cnt << endl;
+                locald_r = std::chrono::system_clock::now().time_since_epoch();
+                cnt = 0;
+            }
+        }
+
         updateHearBrakeExpired();
         auto size = rBuf.readsocket(fd);
         if (0 == size || -1 == size)
