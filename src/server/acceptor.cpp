@@ -107,6 +107,7 @@ void acceptor::wait()
 	event_base_loop(this->base.get(), EVLOOP_NO_EXIT_ON_EMPTY);
 	cout << " exit the acceptor wait" << endl;
 	listener.reset();
+	signal_event.reset();
 	onListenBreak();
 	cout << " exit the acceptor wait" << endl;
 }

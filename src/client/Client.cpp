@@ -98,8 +98,7 @@ int main()
 	}
 
 	std::thread cont_thread([&raii_base]() {
-		sleep(3);
-		for (int i = 0; i < MAX_CONNECT_CNT; i++)
+		for (int i = 0; i < MAX_CONNECT_CNT;)
 		{
 			int port = 9950;
 			struct sockaddr_in my_address;
@@ -111,6 +110,11 @@ int main()
 			// set TCP_NODELAY to let data arrive at the server side quickly
 			evutil_socket_t fd;
 			fd = socket(AF_INET, SOCK_STREAM, 0);
+			if (fd < 0)
+			{
+				cout << "ERROR: socket create error!\n";
+				continue;
+			}
 
 			int enable = 1;
 			if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (void *)&enable, sizeof(enable)) < 0)
@@ -123,7 +127,7 @@ int main()
 			int result = connect(fd, (struct sockaddr *)&my_address, sizeof(struct sockaddr));
 			if (result < 0)
 			{
-				cout << "Connect Error!" << endl;
+				cout << "Connect Error!" << strerror(errno) << endl;
 				close(fd);
 				continue;
 			}
@@ -139,6 +143,8 @@ int main()
 				continue;
 			}
 			cMap.emplace(fd, std::move(raii_socket_event));
+			i++;
+			usleep(1000);
 		}
 		int idx = 0;
 		char *data = "adbdddd";
