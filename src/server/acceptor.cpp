@@ -82,7 +82,6 @@ void acceptor::connection_cb(struct evconnlistener *listener, evutil_socket_t fd
 	if (ctx == nullptr)
 		return;
 	
-
 	con_cnt++;
 	if(con_cnt == 1){
 		locald= std::chrono::system_clock::now().time_since_epoch();
