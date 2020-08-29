@@ -27,6 +27,7 @@ using namespace std;
 #define LOG(X) std::cout << "Client: " << X << std::endl
 bool isStop = false;
 std::map<evutil_socket_t, raii_event> cMap;
+std::map<evutil_socket_t, raii_event> cMap1;
 static void onSignal(evutil_socket_t sig, short events, void *ctx)
 {
 	if (!ctx)
@@ -49,7 +50,15 @@ static void onRead(evutil_socket_t socket_fd, short events, void *ctx)
 		{
 			event_del(read_ev);
 		}
-		cMap.erase(socket_fd);
+		if (socket_fd % 2 == 0)
+		{
+			cMap.erase(socket_fd);
+		}
+		else
+		{
+			cMap1.erase(socket_fd);
+		}
+
 		close(socket_fd);
 		return;
 	}
@@ -142,16 +151,33 @@ int main()
 				close(fd);
 				continue;
 			}
-			cMap.emplace(fd, std::move(raii_socket_event));
+			if (fd % 2 == 0)
+			{
+				cMap.emplace(fd, std::move(raii_socket_event));
+			}
+			else
+			{
+				cMap1.emplace(fd, std::move(raii_socket_event));
+			}
+
 			i++;
 			usleep(1000);
 		}
 		int idx = 0;
-		char *data = "adbdddd";
+		thread_local char *data = "adbddddnadbdddd";
+		std::thread c_thread([]() {
+			std::map<evutil_socket_t, raii_event>::iterator it;
+			for (it = cMap1.begin(); it != cMap1.end(); ++it)
+			{
+				evutil_socket_t fd = it->first;
+				write(fd, data, strlen(data) + 1);
+				// cout << "SEND :" << fd << endl;
+			}
+		});
 		while (1)
 		{
 
-			std::map<evutil_socket_t, raii_event>::iterator it = cMap.begin();
+			std::map<evutil_socket_t, raii_event>::iterator it;
 			for (it = cMap.begin(); it != cMap.end(); ++it)
 			{
 				evutil_socket_t fd = it->first;
@@ -159,6 +185,7 @@ int main()
 				// cout << "SEND :" << fd << endl;
 			}
 		}
+		c_thread.join();
 	});
 	std::thread work_thread([&raii_base]() {
 		event_base_loop(raii_base.get(), EVLOOP_NO_EXIT_ON_EMPTY);

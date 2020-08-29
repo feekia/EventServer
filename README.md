@@ -29,6 +29,13 @@ TLS(未开发)
 写数据：
 
 自定义写缓存设计
+
+## 注意事项
+1.libevent需要 2.1.8以上的版本，否则不支持该宏：EVLOOP_NO_EXIT_ON_EMPTY
+
+2.GCC 需要支持C++14 请自行安装高版本的GCC
+
+3.编译脚本生成使用的是automake autoconf ，请百度自行安装相应工具。
   
 ## 编译
 ./autogen.sh
@@ -57,6 +64,6 @@ server负责监听链接，以及在收到client数据时，将数据重新发�
 
 每个client 创建一万个链接，并用一个线程轮流给1万个socket发送数据，
 
-目前测试：峰值并发连接2.9K/s ; 5万连接，8bytes 数据收发，QPS:1.92w(还需搭建测试环境加大测试力度)
+目前测试：峰值并发连接2.9K/s ; 5万连接，16bytes 数据收发，QPS:1.92w(还需搭建测试环境加大测试力度)
 
 author：afreeliyunfeil@163.com

@@ -27,7 +27,7 @@ enum timeout_config
     SHUTDOWNTIMEOUT = 5,
     WRITETIMEOUT = 10,
     READTIMEOUT = 20,
-    HEARTBITTIMEOUT = 240
+    HEARTBITTIMEOUT = 480
 };
 class channel : public std::enable_shared_from_this<channel>
 {
