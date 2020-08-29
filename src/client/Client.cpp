@@ -106,7 +106,7 @@ int main()
 		return -1;
 	}
 
-	auto func = [&raii_base]() {
+	auto func = [&raii_base](int idx) {
 		for (int i = 0; i < MAX_CONNECT_CNT;)
 		{
 			int port = 9950;
@@ -162,14 +162,15 @@ int main()
 			}
 
 			i++;
-			usleep(1000);
+			// usleep(1000);
 		}
 		char *data = "adbddddnadbdddd";
+		std::map<evutil_socket_t, raii_event> &map = (idx == 0)? cMap : cMap1;
 		while (1)
 		{
 
 			std::map<evutil_socket_t, raii_event>::iterator it;
-			for (it = cMap.begin(); it != cMap.end(); ++it)
+			for (it = map.begin(); it != map.end(); ++it)
 			{
 				evutil_socket_t fd = it->first;
 				write(fd, data, strlen(data) + 1);
@@ -177,8 +178,12 @@ int main()
 			}
 		}
 	};
-	std::thread cont_thread(func);
-	std::thread cont_thread1(func);
+	std::thread cont_thread([&func](){
+		func(0);
+	});
+	std::thread cont_thread1([&func](){
+		func(1);
+	});
 	std::thread work_thread([&raii_base]() {
 		event_base_loop(raii_base.get(), EVLOOP_NO_EXIT_ON_EMPTY);
 		cout << " break thread loop" << endl;
@@ -187,6 +192,6 @@ int main()
 	work_thread.join();
 	cont_thread.join();
 	cont_thread1.join();
-	
+
 	return 0;
 }

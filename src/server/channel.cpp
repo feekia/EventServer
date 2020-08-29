@@ -26,6 +26,7 @@ void channel::listenWatcher(raii_event &&revent, raii_event &&wevent)
         return;
     }
     rFinish = false;
+    updateHearBrakeExpired();
 }
 void channel::addReadEvent(size_t timeout)
 {
