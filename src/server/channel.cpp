@@ -1,68 +1,27 @@
 #include "channel.h"
 #include "socketholder.h"
-channel::channel(std::weak_ptr<socketholder> &&h, evutil_socket_t _fd) : fd(_fd), holder(h), stop(false)
+channel::channel(std::weak_ptr<socketholder> &&h, evutil_socket_t _fd) : fd(_fd), holder(h), stop(false), isProc(false)
 {
     state.store(INIT);
     std::chrono::system_clock::duration d = std::chrono::system_clock::now().time_since_epoch();
     std::chrono::seconds sec = std::chrono::duration_cast<std::chrono::seconds>(d);
     timestamp = sec.count();
-    wFinish = true;
-    rFinish = true;
 }
 
 channel::~channel()
 {
 }
 
-void channel::listenWatcher(raii_event &&revent, raii_event &&wevent)
+void channel::listenWatcher(raii_event &&events)
 {
-    rEvent = std::move(revent);
-    wEvent = std::move(wevent);
-    struct timeval tv = {30, 0};
-    int ret = event_add(rEvent.get(), &tv); // add read event into event_baseF
+    rwEvent = std::move(events);
+    struct timeval tv = {HEARTBITTIMEOUT, 0};
+    int ret = event_add(rwEvent.get(), &tv); // add read event into event_baseF
     if (ret != 0)
     {
         cout << "listenWatcher event error :" << fd << endl;
         return;
     }
-    rFinish = false;
-    updateHearBrakeExpired();
-}
-void channel::addReadEvent(size_t timeout)
-{
-    struct timeval tv = {20, 0};
-    if (timeout > 0)
-    {
-        tv.tv_sec = timeout;
-    }
-
-    int ret = event_add(rEvent.get(), &tv);
-    if (ret != 0)
-    {
-        cout << "add read event error :" << fd << endl;
-        return;
-    }
-    rFinish = false;
-}
-
-void channel::addWriteEvent(size_t timeout)
-{
-    struct timeval tv = {10, 0};
-    if (timeout > 0)
-    {
-        tv.tv_sec = timeout;
-    }
-    int wpending = event_pending(wEvent.get(), EV_WRITE | EV_TIMEOUT, nullptr);
-    if (wpending == (EV_WRITE | EV_TIMEOUT))
-    {
-        return;
-    }
-    int ret = event_add(wEvent.get(), &tv);
-    if (ret != 0)
-    {
-        cout << "add write event error :" << fd << endl;
-    }
-    wFinish = false;
 }
 
 int32_t channel::send(char *buffer, size_t l)
@@ -72,197 +31,187 @@ int32_t channel::send(char *buffer, size_t l)
     {
         return -1;
     }
-
     wBuf.append(buffer, l);
-    if (wFinish == false)
-    {
-        std::shared_ptr<socketholder> hld = holder.lock();
-        if (hld == nullptr)
-        {
-            return -1;
-        }
-        hld->pools.enqueue([chan = shared_from_this()]() {
-            chan->send_internal();
-        });
-    }
+    wBuf.writesocket(fd);
+    updateHearBrakeExpired();
 
+    if (!isProc)
+        event_active(rwEvent.get(), EV_WRITE, 1);
     return l;
 }
-void channel::onDisconnect(evutil_socket_t fd)
-{
-    std::shared_ptr<socketholder> hld = holder.lock();
-    if (hld == nullptr)
-    {
-        return;
-    }
-    hld->onDisconnect(fd);
-}
+
 thread_local int cnt = 0;
 thread_local std::chrono::system_clock::duration locald_r;
 void channel::onChannelRead(short events, void *ctx)
 {
-    rFinish = true;
     std::shared_ptr<socketholder> hld = holder.lock();
     if (hld == nullptr)
     {
         return;
     }
 
-    // cout << "onChannelRead start " << fd << endl;
-    if (events & EV_TIMEOUT)
+    cnt++;
+    if (cnt == 1)
     {
-        // 判斷心跳是否超時
-        if (isHeartBrakeExpired() || stop == true)
+        locald_r = std::chrono::system_clock::now().time_since_epoch();
+    }
+
+    if (cnt > 20)
+    {
+        std::chrono::system_clock::duration d = std::chrono::system_clock::now().time_since_epoch();
+        std::chrono::milliseconds msec = std::chrono::duration_cast<std::chrono::milliseconds>(d);
+        std::chrono::milliseconds localmsec = std::chrono::duration_cast<std::chrono::milliseconds>(locald_r);
+        int64_t diff = msec.count() - localmsec.count();
+        if (diff > 10 * 1000)
         {
-            {
-                std::unique_lock<std::mutex> lock(cMutex);
-                cout << "onRead timeout Expired " << fd << endl;
-                stop = true;
-                if (wFinish == true)
-                {
-                    if (state == INIT)
-                    {
-                        cout << "shutdown write mode IN READ" << fd << endl;
-                        shutdown(fd, SHUT_WR);
-                        state = SHUTDOWN;
-                        addReadEvent(SHUTDOWNTIMEOUT);
-                        return;
-                    } // else will goto onDisconnect
-                }
-                else
-                {
-                    addReadEvent(SHUTDOWNTIMEOUT);
-                    return;
-                }
-            }
-            // onDisconnect
-            {
-                hld->onDisconnect(fd);
-                close(fd);
-                state = CLOSE;
-            }
-            return;
-        }
-        else
-        {
-            addReadEvent(READTIMEOUT);
+            cout << "qps tid: " << std::this_thread::get_id() << " cnt : " << cnt << endl;
+            locald_r = std::chrono::system_clock::now().time_since_epoch();
+            cnt = 0;
         }
     }
-    else if (events & EV_READ)
+
+    updateHearBrakeExpired();
+    auto size = rBuf.readsocket(fd);
+    if (0 == size || -1 == size)
     {
-        cnt++;
-        if(cnt == 1){
-            locald_r = std::chrono::system_clock::now().time_since_epoch();
-        }
-
-        if (cnt > 20)
+        stop = true;
+        handleClose();
+        return;
+    }
+    if (!stop)
+    {
+        wBuf.append(rBuf.readbegin(), rBuf.size());
+        rBuf.reset();
+        int ret = wBuf.writesocket(fd);
+        if (ret == -1)
         {
-            std::chrono::system_clock::duration d = std::chrono::system_clock::now().time_since_epoch();
-            std::chrono::milliseconds msec = std::chrono::duration_cast<std::chrono::milliseconds>(d);
-            std::chrono::milliseconds localmsec = std::chrono::duration_cast<std::chrono::milliseconds>(locald_r);
-            int64_t diff = msec.count() - localmsec.count();
-            if(diff > 10 * 1000){
-                cout << "qps tid: " << std::this_thread::get_id() << " cnt : " << cnt << endl;
-                locald_r = std::chrono::system_clock::now().time_since_epoch();
-                cnt = 0;
-            }
-        }
-
-        updateHearBrakeExpired();
-        auto size = rBuf.readsocket(fd);
-        if (0 == size || -1 == size)
-        {
-            {
-                std::unique_lock<std::mutex> lock(cMutex);
-                stop = true;
-                // cout << "remote socket is close " << fd << endl;
-                removeRWEvent();
-                wFinish = true;
-            }
-            hld->onDisconnect(fd);
-            close(fd);
-            state = CLOSE;
+            cerr << "write error for socket close: " << strerror(errno) << endl;
+            handleClose();
             return;
         }
+    }
 
-        // TODO: rBuf notify
-        // rBuf.toString();
-        wBuf.append(rBuf.readbegin(), rBuf.size());
-        wBuf.writesocket(fd);
-        rBuf.reset();
-        if (stop == true)
+    if (stop)
+    {
+        if (state == INIT)
         {
-            {
-                std::unique_lock<std::mutex> lock(cMutex);
-                if (wFinish == true)
-                {
-                    if (state == INIT)
-                    {
-                        cout << "shutdown write mode IN READ" << fd << endl;
-                        shutdown(fd, SHUT_WR);
-                        state = SHUTDOWN;
-                        addReadEvent(SHUTDOWNTIMEOUT);
-                        return;
-                    } // else will goto onDisconnect
-                }
-                else
-                {
-                    addReadEvent(SHUTDOWNTIMEOUT);
-                    return;
-                }
-            }
-            // onDisconnect
-            {
-                hld->onDisconnect(fd);
-                close(fd);
-                state = CLOSE;
-            }
+            shutdown(fd, SHUT_WR);
+            state = SHUTDOWN;
+            monitorEvent(EV_READ | EV_TIMEOUT, CLOSETIMEOUT);
             return;
         }
         else
         {
-            addReadEvent(READTIMEOUT);
+            handleClose();
+            return;
         }
-
-        return;
+    }
+    if (wBuf.size() > 0)
+    {
+        monitorEvent(EV_WRITE | EV_READ | EV_TIMEOUT, HEARTBITTIMEOUT);
+    }
+    else
+    {
+        uint64_t left = heartBrakeLeft();
+        monitorEvent(EV_READ | EV_TIMEOUT, left > 2 ? left : 2);
     }
 }
 
 void channel::onChannelWrite(short events, void *ctx)
 {
-    wFinish = true;
-    // cout << "onChannelWrite start: " << fd << endl;
     std::shared_ptr<socketholder> hld = holder.lock();
     if (hld == nullptr)
     {
         return;
     }
 
-    if (events & EV_TIMEOUT)
+    if (wBuf.size() > 0)
     {
-        std::unique_lock<std::mutex> lock(cMutex);
-        stop = true;
-        cout << "write timeout close socket" << endl;
-        wBuf.reset();
-        wFinish = true;
-        state = SHUTDOWN;
-        return;
-    }
-    else if (events & EV_WRITE)
-    {
-        if (state != INIT)
+        updateHearBrakeExpired();
+        int ret = wBuf.writesocket(fd);
+        if (ret == -1)
         {
-            wFinish = true;
-            cout << "socket is closing or closed,so return" << endl;
+            cerr << "write error for socket close: " << strerror(errno) << endl;
+            handleClose();
             return;
         }
+    }
+    if (stop)
+    {
+        shutdown(fd, SHUT_WR);
+        state = SHUTDOWN;
+        monitorEvent(EV_READ | EV_TIMEOUT, CLOSETIMEOUT);
+        return;
+    }
+
+    if (wBuf.size() > 0)
+    {
+        monitorEvent(EV_WRITE | EV_READ | EV_TIMEOUT, HEARTBITTIMEOUT);
+    }
+    else
+    {
+        uint64_t left = heartBrakeLeft();
+        monitorEvent(EV_READ | EV_TIMEOUT, left > 2 ? left : 2);
+    }
+}
+
+void channel::onChannelTimeout(short events, void *ctx)
+{
+    uint64_t left = heartBrakeLeft();
+    if (left < 0 || stop)
+    {
+        handleClose();
+        return;
+    }
+
+    if (wBuf.size() > 0)
+    {
         updateHearBrakeExpired();
-        bool ret = send_internal();
-        if (ret == false)
-        { // BADEF
-            wFinish = true;
+        int ret = wBuf.writesocket(fd);
+        if (ret == -1)
+        {
+            cerr << "write error for socket close: " << strerror(errno) << endl;
+            handleClose();
+            return;
         }
     }
+    if (wBuf.size() > 0)
+    {
+        monitorEvent(EV_WRITE | EV_READ | EV_TIMEOUT, HEARTBITTIMEOUT);
+    }
+    else
+    {
+        left = heartBrakeLeft();
+        monitorEvent(EV_READ | EV_TIMEOUT, left > 2 ? left : 2);
+    }
+}
+
+void channel::handleClose()
+{
+    stop = true;
+    std::shared_ptr<socketholder> hld = holder.lock();
+    if (hld == nullptr)
+    {
+        goto exit;
+    }
+    hld->onDisconnect(fd);
+
+exit:
+    close(fd);
+    state = CLOSE;
+    return;
+}
+
+void channel::monitorEvent(short events, size_t timeout)
+{
+    event_callback_fn fn = event_get_callback(rwEvent.get());
+    void *arg = event_get_callback_arg(rwEvent.get());
+    timeval tv = {timeout, 0};
+
+    event_base *base = event_get_base(rwEvent.get());
+    event_set(rwEvent.get(), fd, events, fn, arg);
+    event_base_set(base, rwEvent.get());
+    event_add(rwEvent.get(), &tv);
 }
 void channel::closeSafty()
 {

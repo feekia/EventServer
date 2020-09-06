@@ -27,6 +27,7 @@ enum timeout_config
     SHUTDOWNTIMEOUT = 5,
     WRITETIMEOUT = 10,
     READTIMEOUT = 20,
+    CLOSETIMEOUT = 10,
     HEARTBITTIMEOUT = 120
 };
 class channel : public std::enable_shared_from_this<channel>
@@ -36,44 +37,20 @@ private:
     std::weak_ptr<socketholder> holder;
     std::mutex cMutex;
     std::atomic<bool> stop;
-    std::atomic<bool> rFinish;
-    std::atomic<bool> wFinish;
+    std::atomic<bool> isProc;
     std::atomic<int8_t> state;
     buffer wBuf;
     buffer rBuf;
-    raii_event rEvent;
-    raii_event wEvent;
+    raii_event rwEvent;
     int64_t timestamp = 0;
 
 public:
     channel(std::weak_ptr<socketholder> &&h, evutil_socket_t _fd);
     ~channel();
 
-    void listenWatcher(raii_event &&revent, raii_event &&wevent);
+    void listenWatcher(raii_event &&events);
 
-    void addReadEvent(size_t timeout);
-    void addWriteEvent(size_t timeout);
-    void removeRWEvent()
-    {
-        int wpending = event_pending(wEvent.get(), EV_WRITE | EV_TIMEOUT, nullptr);
-        if (wpending == (EV_WRITE | EV_TIMEOUT))
-        {
-            int ret = event_del(wEvent.get());
-            if (ret != 0)
-            {
-                cout << "remove write event error :" << fd << endl;
-            }
-        }
-        int rpending = event_pending(rEvent.get(), EV_READ | EV_TIMEOUT, nullptr);
-        if (rpending == (EV_READ | EV_TIMEOUT))
-        {
-            int ret = event_del(rEvent.get());
-            if (ret != 0)
-            {
-                cout << "remove read event error :" << fd << endl;
-            }
-        }
-    }
+    void monitorEvent(short events, size_t timeout);
     int32_t send(char *buffer, size_t l);
     void onDisconnect(evutil_socket_t fd);
     std::shared_ptr<channel> share()
@@ -83,8 +60,37 @@ public:
 
     void onChannelRead(short events, void *ctx);
     void onChannelWrite(short events, void *ctx);
-
+    void onChannelTimeout(short events, void *ctx);
+    void handleEvent(short events)
+    {
+        std::unique_lock<std::mutex> lock(cMutex);
+        if (events & EV_READ)
+        {
+            cout << " EV_READ :" << fd <<  endl;
+            onChannelRead(events, nullptr);
+        }
+        else if (events & EV_WRITE)
+        {
+            cout << " EV_WRITE :" << fd <<  endl;
+            onChannelWrite(events, nullptr);
+        }
+        else if (events & EV_TIMEOUT)
+        {
+            cout << " EV_TIMEOUT: " << fd <<  endl;
+            onChannelTimeout(events, nullptr);
+        }
+        setProcing(false);
+    }
+    bool isProcing()
+    {
+        return isProc;
+    }
+    void setProcing(bool b)
+    {
+        isProc = b;
+    }
     void closeSafty();
+
 private:
     bool isHeartBrakeExpired()
     {
@@ -92,6 +98,13 @@ private:
         std::chrono::seconds sec = std::chrono::duration_cast<std::chrono::seconds>(d);
         return (sec.count() - timestamp) > HEARTBITTIMEOUT;
     }
+    uint64_t heartBrakeLeft()
+    {
+        std::chrono::system_clock::duration d = std::chrono::system_clock::now().time_since_epoch();
+        std::chrono::seconds sec = std::chrono::duration_cast<std::chrono::seconds>(d);
+        return (HEARTBITTIMEOUT - (sec.count() - timestamp));
+    }
+
     void updateHearBrakeExpired()
     {
         std::chrono::system_clock::duration d = std::chrono::system_clock::now().time_since_epoch();
@@ -99,30 +112,6 @@ private:
         timestamp = sec.count();
     }
 
-    bool send_internal()
-    {
-        std::unique_lock<std::mutex> lock(cMutex);
-        if (wBuf.size() > 0)
-        {
-            wFinish = false;
-            int ret = wBuf.writesocket(fd);
-            if(ret == -1){
-                wFinish = true;
-                return false;
-            }
-            addWriteEvent(WRITETIMEOUT);
-        }
-        else
-        {
-            wFinish = true;
-            if (stop == true && state == INIT)
-            {
-                cout << "send_internal: shutdown write mode" << endl;
-                shutdown(fd, SHUT_WR);
-                state = SHUTDOWN;
-            }
-        }
-        return true;
-    }
+    void handleClose();
 };
 #endif

@@ -44,7 +44,7 @@ ssize_t buffer::writesocket(evutil_socket_t fd)
     }
     do
     {
-        wSize = write(fd, (void *)readbegin(), size());
+        wSize = send(fd, (void *)readbegin(), size(), MSG_NOSIGNAL);
         if (wSize > 0)
         {
             rc += wSize;
@@ -56,7 +56,7 @@ ssize_t buffer::writesocket(evutil_socket_t fd)
     //     // TODO: event_add
     // }
 
-    if (wSize == -1 && errno == EBADF)
+    if (wSize == -1 && errno == EPIPE)
     {
         return -1;
     }

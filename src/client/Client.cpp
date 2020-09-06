@@ -62,7 +62,7 @@ static void onRead(evutil_socket_t socket_fd, short events, void *ctx)
 		close(socket_fd);
 		return;
 	}
-	LOG(buffer);
+	LOG(size);
 }
 
 static void onTerminal(evutil_socket_t fd, short events, void *ctx)
@@ -82,7 +82,7 @@ static void onTerminal(evutil_socket_t fd, short events, void *ctx)
 	ret = write(sockfd, msg, ret);
 }
 
-#define MAX_CONNECT_CNT (10000)
+#define MAX_CONNECT_CNT (1000)
 int main()
 {
 	evthread_use_pthreads();
@@ -164,7 +164,7 @@ int main()
 			i++;
 			// usleep(1000);
 		}
-		char *data = "adbddddnadbdddd";
+		char *data = "adbddddnadbddddnadbddddnadbdddd";
 		std::map<evutil_socket_t, raii_event> &map = (idx == 0)? cMap : cMap1;
 		while (1)
 		{

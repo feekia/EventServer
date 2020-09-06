@@ -59,8 +59,8 @@ public:
 	{
 		return shared_from_this();
 	}
-	friend void onRead(evutil_socket_t socket_fd, short events, void *ctx);
-	friend void onWrite(evutil_socket_t socket_fd, short events, void *ctx);
+
+	friend void onEvent(evutil_socket_t socket_fd, short events, void *ctx);
 
 public:
 	static socketholder *getInstance()
