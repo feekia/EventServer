@@ -18,6 +18,4 @@
 
 #endif
 
-#define LOG(X) std::cout << "in function: " << X << std::endl
-
 #endif

@@ -44,6 +44,7 @@ static void onRead(evutil_socket_t socket_fd, short events, void *ctx)
 	int size = TEMP_FAILURE_RETRY(read(socket_fd, buffer, BUF_SIZE));
 	if (0 == size || -1 == size)
 	{ //说明socket关闭
+		cout << " errno: " << strerror(errno) << endl;
 		cout << "read size is " << size << " for socket: " << socket_fd << endl;
 		struct event *read_ev = (struct event *)ctx;
 		if (NULL != read_ev)
@@ -62,7 +63,7 @@ static void onRead(evutil_socket_t socket_fd, short events, void *ctx)
 		close(socket_fd);
 		return;
 	}
-	LOG(size);
+	// LOG(size);
 }
 
 static void onTerminal(evutil_socket_t fd, short events, void *ctx)
@@ -82,7 +83,7 @@ static void onTerminal(evutil_socket_t fd, short events, void *ctx)
 	ret = write(sockfd, msg, ret);
 }
 
-#define MAX_CONNECT_CNT (1000)
+#define MAX_CONNECT_CNT (5000)
 int main()
 {
 	evthread_use_pthreads();
@@ -164,24 +165,28 @@ int main()
 			i++;
 			// usleep(1000);
 		}
-		char *data = "adbddddnadbddddnadbddddnadbdddd";
-		std::map<evutil_socket_t, raii_event> &map = (idx == 0)? cMap : cMap1;
+		const char *data = "adbddddnadbddddnadbddddnadbdddd";
+		std::map<evutil_socket_t, raii_event> &map = (idx == 0) ? cMap : cMap1;
 		while (1)
 		{
-
 			std::map<evutil_socket_t, raii_event>::iterator it;
 			for (it = map.begin(); it != map.end(); ++it)
 			{
 				evutil_socket_t fd = it->first;
-				write(fd, data, strlen(data) + 1);
+				int s = send(fd, data, strlen(data) + 1, MSG_NOSIGNAL);
 				// cout << "SEND :" << fd << endl;
+				if (s == -1 && errno == EPIPE)
+				{
+					map.erase(it->first);
+				}
+				usleep(100);
 			}
 		}
 	};
-	std::thread cont_thread([&func](){
+	std::thread cont_thread([&func]() {
 		func(0);
 	});
-	std::thread cont_thread1([&func](){
+	std::thread cont_thread1([&func]() {
 		func(1);
 	});
 	std::thread work_thread([&raii_base]() {

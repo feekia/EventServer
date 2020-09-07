@@ -50,7 +50,7 @@ public:
 
     void listenWatcher(raii_event &&events);
 
-    void monitorEvent(short events, size_t timeout);
+    void monitorEvent(short events, int64_t timeout);
     int32_t send(char *buffer, size_t l);
     void onDisconnect(evutil_socket_t fd);
     std::shared_ptr<channel> share()
@@ -64,19 +64,22 @@ public:
     void handleEvent(short events)
     {
         std::unique_lock<std::mutex> lock(cMutex);
+        if(CLOSE == state){
+            return;
+        }
         if (events & EV_READ)
         {
-            cout << " EV_READ :" << fd <<  endl;
+            // cout << " EV_READ :" << fd <<  endl;
             onChannelRead(events, nullptr);
         }
         else if (events & EV_WRITE)
         {
-            cout << " EV_WRITE :" << fd <<  endl;
+            // cout << " EV_WRITE :" << fd <<  endl;
             onChannelWrite(events, nullptr);
         }
         else if (events & EV_TIMEOUT)
         {
-            cout << " EV_TIMEOUT: " << fd <<  endl;
+            // cout << " EV_TIMEOUT: " << fd <<  endl;
             onChannelTimeout(events, nullptr);
         }
         setProcing(false);

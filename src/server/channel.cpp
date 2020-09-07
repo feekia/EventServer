@@ -34,9 +34,6 @@ int32_t channel::send(char *buffer, size_t l)
     wBuf.append(buffer, l);
     wBuf.writesocket(fd);
     updateHearBrakeExpired();
-
-    if (!isProc)
-        event_active(rwEvent.get(), EV_WRITE, 1);
     return l;
 }
 
@@ -74,6 +71,7 @@ void channel::onChannelRead(short events, void *ctx)
     auto size = rBuf.readsocket(fd);
     if (0 == size || -1 == size)
     {
+        cout << "read socket error : " << strerror(errno) << endl; 
         stop = true;
         handleClose();
         return;
@@ -97,7 +95,6 @@ void channel::onChannelRead(short events, void *ctx)
         {
             shutdown(fd, SHUT_WR);
             state = SHUTDOWN;
-            monitorEvent(EV_READ | EV_TIMEOUT, CLOSETIMEOUT);
             return;
         }
         else
@@ -105,15 +102,6 @@ void channel::onChannelRead(short events, void *ctx)
             handleClose();
             return;
         }
-    }
-    if (wBuf.size() > 0)
-    {
-        monitorEvent(EV_WRITE | EV_READ | EV_TIMEOUT, HEARTBITTIMEOUT);
-    }
-    else
-    {
-        uint64_t left = heartBrakeLeft();
-        monitorEvent(EV_READ | EV_TIMEOUT, left > 2 ? left : 2);
     }
 }
 
@@ -140,18 +128,7 @@ void channel::onChannelWrite(short events, void *ctx)
     {
         shutdown(fd, SHUT_WR);
         state = SHUTDOWN;
-        monitorEvent(EV_READ | EV_TIMEOUT, CLOSETIMEOUT);
         return;
-    }
-
-    if (wBuf.size() > 0)
-    {
-        monitorEvent(EV_WRITE | EV_READ | EV_TIMEOUT, HEARTBITTIMEOUT);
-    }
-    else
-    {
-        uint64_t left = heartBrakeLeft();
-        monitorEvent(EV_READ | EV_TIMEOUT, left > 2 ? left : 2);
     }
 }
 
@@ -175,19 +152,17 @@ void channel::onChannelTimeout(short events, void *ctx)
             return;
         }
     }
-    if (wBuf.size() > 0)
-    {
-        monitorEvent(EV_WRITE | EV_READ | EV_TIMEOUT, HEARTBITTIMEOUT);
-    }
-    else
-    {
-        left = heartBrakeLeft();
-        monitorEvent(EV_READ | EV_TIMEOUT, left > 2 ? left : 2);
-    }
 }
 
 void channel::handleClose()
 {
+
+    int pending = event_pending(rwEvent.get(), EV_WRITE | EV_READ | EV_TIMEOUT | EV_ET | EV_PERSIST, nullptr);
+    if (pending != 0)
+    {
+        event_del(rwEvent.get());
+    }
+
     stop = true;
     std::shared_ptr<socketholder> hld = holder.lock();
     if (hld == nullptr)
@@ -202,7 +177,7 @@ exit:
     return;
 }
 
-void channel::monitorEvent(short events, size_t timeout)
+void channel::monitorEvent(short events, int64_t timeout)
 {
     event_callback_fn fn = event_get_callback(rwEvent.get());
     void *arg = event_get_callback_arg(rwEvent.get());

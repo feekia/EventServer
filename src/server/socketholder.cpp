@@ -38,13 +38,13 @@ void socketholder::onConnect(evutil_socket_t fd)
     chns[id].emplace(fd, pChan);
 
     auto base = rwatchers[fd % READ_LOOP_MAX].get();
-    auto rwevent = obtain_event(base, fd, EV_READ | EV_TIMEOUT, onEvent, pChan.get());
+    auto rwevent = obtain_event(base, fd, EV_WRITE | EV_READ | EV_TIMEOUT | EV_ET | EV_PERSIST, onEvent, pChan.get());
     pChan->listenWatcher(std::move(rwevent));
 }
 
 void socketholder::onDisconnect(evutil_socket_t fd)
 {
-    cout << "socketholder onDisconnect fd: " << fd << endl;
+    // cout << "socketholder close fd: " << fd << " for reson: " << strerror(errno) << endl;
     auto id = fd % READ_LOOP_MAX;
     std::unique_lock<std::mutex> lock(syncMutex[id]);
     chns[id].erase(fd);
