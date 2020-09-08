@@ -6,6 +6,7 @@
 using namespace std;
 
 void onEvent(evutil_socket_t socket_fd, short events, void *ctx);
+void onSocketPairRead(evutil_socket_t socket_fd, short events, void *ctx);
 socketholder *socketholder::instance = nullptr;
 socketholder::socketholder() : isStop(false), pools(24)
 {
@@ -17,6 +18,15 @@ socketholder::socketholder() : isStop(false), pools(24)
             cout << "in loop id: " << i << endl;
             // std::this_thread::sleep_for(std::chrono::seconds(1));
         });
+
+        if (evutil_socketpair(AF_UNIX, SOCK_STREAM, 0, pair[i]) == -1)
+        {
+            cout << "create socketpair error, idx: " << i << endl;
+        }
+        evutil_make_socket_nonblocking(pair[i][0]);
+        evutil_make_socket_nonblocking(pair[i][1]);
+        pair_events[i] = obtain_event(rwatchers[i].get(), pair[i][0], EV_READ | EV_PERSIST, onSocketPairRead, nullptr);
+        event_add(pair_events[i].get(),nullptr);
     }
 }
 socketholder::~socketholder()
@@ -38,19 +48,21 @@ void socketholder::onConnect(evutil_socket_t fd)
     chns[id].emplace(fd, pChan);
 
     auto base = rwatchers[fd % READ_LOOP_MAX].get();
-    auto rwevent = obtain_event(base, fd, EV_WRITE | EV_READ | EV_TIMEOUT | EV_ET | EV_PERSIST, onEvent, pChan.get());
+    auto rwevent = obtain_event(base, fd, EV_WRITE | EV_READ | EV_TIMEOUT | EV_ET | EV_PERSIST | EV_CLOSED, onEvent, pChan.get());
     pChan->listenWatcher(std::move(rwevent));
 }
 
 void socketholder::onDisconnect(evutil_socket_t fd)
 {
-    // cout << "socketholder close fd: " << fd << " for reson: " << strerror(errno) << endl;
+    cout << "socketholder close fd: " << fd << " for reson: " << strerror(errno) << endl;
     auto id = fd % READ_LOOP_MAX;
     std::unique_lock<std::mutex> lock(syncMutex[id]);
     chns[id].erase(fd);
+    close(fd);
     if (isStop && chns[id].size() == 0)
     {
         event_base_loopexit(rwatchers[id].get(), nullptr);
+        event_del(pair_events[id].get());
         cout << "onDisconnect exit loop id: " << id << endl;
     }
 }
@@ -59,17 +71,17 @@ void socketholder::closeIdleChannel()
     for (int i = 0; i < READ_LOOP_MAX; i++)
     {
         std::unique_lock<std::mutex> lock(syncMutex[i]);
-        cout << "closeIdleChannel START: " << i << endl;
         std::map<evutil_socket_t, std::shared_ptr<channel>>::iterator it;
         for (it = chns[i].begin(); it != chns[i].end(); it++)
         {
             it->second->closeSafty();
         }
+        write(pair[i][1],"o",2);
         if (chns[i].size() == 0)
         {
             event_base_loopexit(rwatchers[i].get(), nullptr);
+            event_del(pair_events[i].get());
         }
-        cout << "closeIdleChannel END: " << i << endl;
     }
 }
 void socketholder::waitStop()
@@ -84,6 +96,8 @@ void socketholder::waitStop()
         {
             watcher_thread[i].join();
         }
+        close(pair[i][0]);
+        close(pair[i][1]);
     }
 }
 
@@ -118,13 +132,28 @@ void onEvent(evutil_socket_t socket_fd, short events, void *ctx)
             chan->closeSafty();
         }
 
-        chan->setProcing(true);
         sptr->pools.enqueue([chan, events]() {
+            chan->setProcing(true);
             chan->handleEvent(events);
-        });
+        },socket_fd % sptr->pools.getSize());
     }
     catch (const std::bad_weak_ptr &e)
     {
         std::cerr << e.what() << '\n';
     }
+}
+
+void onSocketPairRead(evutil_socket_t socket_fd, short events, void *ctx){
+    ssize_t rSize = 0;
+    ssize_t rc = 0;
+    cout << "onSocketPairRead: " << socket_fd << endl;
+    char buffer[64] = {0};
+    do
+    {
+        rSize = read(socket_fd, (void *)buffer, sizeof(buffer));
+        if (rSize > 0)
+        {
+            rc += rSize;
+        }
+    } while ((rSize == -1 && errno == EINTR));
 }

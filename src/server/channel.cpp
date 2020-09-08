@@ -6,6 +6,7 @@ channel::channel(std::weak_ptr<socketholder> &&h, evutil_socket_t _fd) : fd(_fd)
     std::chrono::system_clock::duration d = std::chrono::system_clock::now().time_since_epoch();
     std::chrono::seconds sec = std::chrono::duration_cast<std::chrono::seconds>(d);
     timestamp = sec.count();
+    isClose = false;
 }
 
 channel::~channel()
@@ -61,7 +62,7 @@ void channel::onChannelRead(short events, void *ctx)
         int64_t diff = msec.count() - localmsec.count();
         if (diff > 10 * 1000)
         {
-            cout << "qps tid: " << std::this_thread::get_id() << " cnt : " << cnt << endl;
+            cout << "tid: " << std::this_thread::get_id() << " 10s cnt : " << cnt << endl;
             locald_r = std::chrono::system_clock::now().time_since_epoch();
             cnt = 0;
         }
@@ -71,7 +72,8 @@ void channel::onChannelRead(short events, void *ctx)
     auto size = rBuf.readsocket(fd);
     if (0 == size || -1 == size)
     {
-        cout << "read socket error : " << strerror(errno) << endl;
+        // cout << "read socket error : " << strerror(errno) << endl;
+        cout << "read socket error close : " << fd << endl;
         stop = true;
         handleClose();
         return;
@@ -89,19 +91,12 @@ void channel::onChannelRead(short events, void *ctx)
         }
     }
 
-    if (stop)
+    if (stop && wBuf.size() == 0 && state == INIT)
     {
-        if (state == INIT)
-        {
-            shutdown(fd, SHUT_WR);
-            state = SHUTDOWN;
-            return;
-        }
-        else
-        {
-            handleClose();
-            return;
-        }
+        shutdown(fd, SHUT_WR);
+        state = SHUTDOWN;
+        cout << "shutdown socket on read :" << fd << endl;
+        return;
     }
 }
 
@@ -124,7 +119,7 @@ void channel::onChannelWrite(short events, void *ctx)
             return;
         }
     }
-    if (stop)
+    if (stop && wBuf.size() == 0 && state == INIT)
     {
         shutdown(fd, SHUT_WR);
         state = SHUTDOWN;
@@ -134,14 +129,16 @@ void channel::onChannelWrite(short events, void *ctx)
 
 void channel::onChannelTimeout(short events, void *ctx)
 {
+    // cout << "onChannelTimeout :" << fd <<endl;
     uint64_t left = heartBrakeLeft();
-    if (left < 0 || stop)
+    if (left < 0 || stop == true)
     {
+        cout << "onChannelTimeout :" << fd << endl;
         handleClose();
         return;
     }
 
-    if (wBuf.size() > 0)
+    if (wBuf.size() > 0 && state == INIT)
     {
         updateHearBrakeExpired();
         int ret = wBuf.writesocket(fd);
@@ -151,6 +148,12 @@ void channel::onChannelTimeout(short events, void *ctx)
             handleClose();
             return;
         }
+    }
+    if (stop && wBuf.size() == 0 && state == INIT)
+    {
+        shutdown(fd, SHUT_WR);
+        state = SHUTDOWN;
+        return;
     }
 }
 
@@ -164,16 +167,19 @@ void channel::handleClose()
     }
 
     stop = true;
-    std::shared_ptr<socketholder> hld = holder.lock();
-    if (hld == nullptr)
-    {
-        goto exit;
-    }
-    hld->onDisconnect(fd);
+    // std::shared_ptr<socketholder> hld = holder.lock();
+    // if (hld == nullptr)
+    // {
+    //     cout << "handleClose :" << fd << endl;
+    //     goto exit;
+    // }
+
+    // hld->onDisconnect(fd);
 
 exit:
-    close(fd);
+    // close(fd);
     state = CLOSE;
+
     return;
 }
 
@@ -194,6 +200,45 @@ void channel::closeSafty()
     if (!stop)
     {
         stop = true;
-        event_active(rwEvent.get(), EV_READ, 1);
+        // event_active(rwEvent.get(), EV_TIMEOUT, 1);
+    }
+}
+
+void channel::handleEvent(short events)
+{
+    {
+        std::unique_lock<std::mutex> lock(cMutex);
+        if (CLOSE == state)
+        {
+            return;
+        }
+        if (events & EV_READ)
+        {
+            onChannelRead(events, nullptr);
+        }
+        else if (events & EV_WRITE)
+        {
+            onChannelWrite(events, nullptr);
+        }
+        else if (events & EV_TIMEOUT)
+        {
+            onChannelTimeout(events, nullptr);
+        }
+        else if (events & EV_CLOSED)
+        {
+            cout << "EV_CLOSED " << endl;
+        }
+        setProcing(false);
+    }
+
+    if (CLOSE == state)
+    {
+        std::shared_ptr<socketholder> hld = holder.lock();
+        if (hld == nullptr)
+        {
+            cout << "handleClose :" << fd << endl;
+        }
+
+        hld->onDisconnect(fd);
     }
 }

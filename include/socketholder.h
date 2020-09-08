@@ -36,6 +36,8 @@ private:
 	std::array<raii_event_base, READ_LOOP_MAX> rwatchers;
 	std::array<std::thread, READ_LOOP_MAX> watcher_thread;
 	std::mutex syncMutex[READ_LOOP_MAX];
+	evutil_socket_t pair[READ_LOOP_MAX][2];
+	raii_event pair_events[READ_LOOP_MAX];
 	std::condition_variable condition;
 	std::atomic_bool isStop;
 	std::array<std::map<evutil_socket_t, std::shared_ptr<channel>>, READ_LOOP_MAX> chns;
@@ -61,6 +63,7 @@ public:
 	}
 
 	friend void onEvent(evutil_socket_t socket_fd, short events, void *ctx);
+	friend void onSocketPairRead(evutil_socket_t socket_fd, short events, void *ctx);
 
 public:
 	static socketholder *getInstance()

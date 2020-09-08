@@ -28,7 +28,7 @@ enum timeout_config
     WRITETIMEOUT = 10,
     READTIMEOUT = 20,
     CLOSETIMEOUT = 10,
-    HEARTBITTIMEOUT = 120
+    HEARTBITTIMEOUT = 60
 };
 class channel : public std::enable_shared_from_this<channel>
 {
@@ -38,6 +38,7 @@ private:
     std::mutex cMutex;
     std::atomic<bool> stop;
     std::atomic<bool> isProc;
+    std::atomic<bool> isClose;
     std::atomic<int8_t> state;
     buffer wBuf;
     buffer rBuf;
@@ -61,29 +62,7 @@ public:
     void onChannelRead(short events, void *ctx);
     void onChannelWrite(short events, void *ctx);
     void onChannelTimeout(short events, void *ctx);
-    void handleEvent(short events)
-    {
-        std::unique_lock<std::mutex> lock(cMutex);
-        if(CLOSE == state){
-            return;
-        }
-        if (events & EV_READ)
-        {
-            // cout << " EV_READ :" << fd <<  endl;
-            onChannelRead(events, nullptr);
-        }
-        else if (events & EV_WRITE)
-        {
-            // cout << " EV_WRITE :" << fd <<  endl;
-            onChannelWrite(events, nullptr);
-        }
-        else if (events & EV_TIMEOUT)
-        {
-            // cout << " EV_TIMEOUT: " << fd <<  endl;
-            onChannelTimeout(events, nullptr);
-        }
-        setProcing(false);
-    }
+    void handleEvent(short events);
     bool isProcing()
     {
         return isProc;
