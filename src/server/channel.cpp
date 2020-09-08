@@ -71,7 +71,7 @@ void channel::onChannelRead(short events, void *ctx)
     auto size = rBuf.readsocket(fd);
     if (0 == size || -1 == size)
     {
-        cout << "read socket error : " << strerror(errno) << endl; 
+        cout << "read socket error : " << strerror(errno) << endl;
         stop = true;
         handleClose();
         return;
@@ -190,5 +190,10 @@ void channel::monitorEvent(short events, int64_t timeout)
 }
 void channel::closeSafty()
 {
-    stop = true;
+    // std::unique_lock<std::mutex> lock(cMutex);
+    if (!stop)
+    {
+        stop = true;
+        event_active(rwEvent.get(), EV_READ, 1);
+    }
 }

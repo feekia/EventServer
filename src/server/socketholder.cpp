@@ -59,11 +59,17 @@ void socketholder::closeIdleChannel()
     for (int i = 0; i < READ_LOOP_MAX; i++)
     {
         std::unique_lock<std::mutex> lock(syncMutex[i]);
+        cout << "closeIdleChannel START: " << i << endl;
+        std::map<evutil_socket_t, std::shared_ptr<channel>>::iterator it;
+        for (it = chns[i].begin(); it != chns[i].end(); it++)
+        {
+            it->second->closeSafty();
+        }
         if (chns[i].size() == 0)
         {
             event_base_loopexit(rwatchers[i].get(), nullptr);
-            cout << "closeIdleChannel exit loop id: " << i << endl;
         }
+        cout << "closeIdleChannel END: " << i << endl;
     }
 }
 void socketholder::waitStop()
@@ -99,8 +105,9 @@ std::shared_ptr<channel> socketholder::getChannel(evutil_socket_t fd)
 void onEvent(evutil_socket_t socket_fd, short events, void *ctx)
 {
     auto sptr = socketholder::getShared_ptr();
-    if (sptr == nullptr)
+    if (sptr == nullptr || ctx == nullptr)
     {
+        cout << "args null" << endl;
         return;
     }
     try
@@ -111,11 +118,6 @@ void onEvent(evutil_socket_t socket_fd, short events, void *ctx)
             chan->closeSafty();
         }
 
-        // if (chan->isProcing())
-        // {
-        //     cout << "is proccessing : " << socket_fd << endl;
-        //     return;
-        // }
         chan->setProcing(true);
         sptr->pools.enqueue([chan, events]() {
             chan->handleEvent(events);
