@@ -1,12 +1,11 @@
 #include "channel.h"
 #include "socketholder.h"
-channel::channel(std::weak_ptr<socketholder> &&h, evutil_socket_t _fd) : fd(_fd), holder(h), stop(false), isProc(false)
+channel::channel(std::weak_ptr<socketholder> &&h, evutil_socket_t _fd) : fd(_fd), holder(h), stop(false), isProc(false), isClose(false)
 {
     state.store(INIT);
     std::chrono::system_clock::duration d = std::chrono::system_clock::now().time_since_epoch();
     std::chrono::seconds sec = std::chrono::duration_cast<std::chrono::seconds>(d);
     timestamp = sec.count();
-    isClose = false;
 }
 
 channel::~channel()
@@ -95,7 +94,7 @@ void channel::onChannelRead(short events, void *ctx)
     {
         shutdown(fd, SHUT_WR);
         state = SHUTDOWN;
-        cout << "shutdown socket on read :" << fd << endl;
+        // cout << "shutdown socket on read :" << fd << endl;
         return;
     }
 }
@@ -167,17 +166,6 @@ void channel::handleClose()
     }
 
     stop = true;
-    // std::shared_ptr<socketholder> hld = holder.lock();
-    // if (hld == nullptr)
-    // {
-    //     cout << "handleClose :" << fd << endl;
-    //     goto exit;
-    // }
-
-    // hld->onDisconnect(fd);
-
-exit:
-    // close(fd);
     state = CLOSE;
 
     return;
@@ -196,11 +184,10 @@ void channel::monitorEvent(short events, int64_t timeout)
 }
 void channel::closeSafty()
 {
-    // std::unique_lock<std::mutex> lock(cMutex);
     if (!stop)
     {
         stop = true;
-        // event_active(rwEvent.get(), EV_TIMEOUT, 1);
+        event_active(rwEvent.get(), EV_READ, 1);
     }
 }
 
@@ -224,15 +211,17 @@ void channel::handleEvent(short events)
         {
             onChannelTimeout(events, nullptr);
         }
-        else if (events & EV_CLOSED)
-        {
-            cout << "EV_CLOSED " << endl;
-        }
+
         setProcing(false);
     }
-
+    // 单独提出来调用 onDisconnect 是为了避免 channel里面的锁和socketholder里面的锁竞争，影响效率或者导致死锁
     if (CLOSE == state)
     {
+        if (isClose)
+        {
+            return;
+        }
+        isClose = true;
         std::shared_ptr<socketholder> hld = holder.lock();
         if (hld == nullptr)
         {

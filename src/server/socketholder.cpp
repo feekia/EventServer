@@ -18,15 +18,6 @@ socketholder::socketholder() : isStop(false), pools(24)
             cout << "in loop id: " << i << endl;
             // std::this_thread::sleep_for(std::chrono::seconds(1));
         });
-
-        if (evutil_socketpair(AF_UNIX, SOCK_STREAM, 0, pair[i]) == -1)
-        {
-            cout << "create socketpair error, idx: " << i << endl;
-        }
-        evutil_make_socket_nonblocking(pair[i][0]);
-        evutil_make_socket_nonblocking(pair[i][1]);
-        pair_events[i] = obtain_event(rwatchers[i].get(), pair[i][0], EV_READ | EV_PERSIST, onSocketPairRead, nullptr);
-        event_add(pair_events[i].get(),nullptr);
     }
 }
 socketholder::~socketholder()
@@ -48,7 +39,7 @@ void socketholder::onConnect(evutil_socket_t fd)
     chns[id].emplace(fd, pChan);
 
     auto base = rwatchers[fd % READ_LOOP_MAX].get();
-    auto rwevent = obtain_event(base, fd, EV_WRITE | EV_READ | EV_TIMEOUT | EV_ET | EV_PERSIST | EV_CLOSED, onEvent, pChan.get());
+    auto rwevent = obtain_event(base, fd, EV_WRITE | EV_READ | EV_TIMEOUT | EV_ET | EV_PERSIST , onEvent, pChan.get());
     pChan->listenWatcher(std::move(rwevent));
 }
 
@@ -57,12 +48,11 @@ void socketholder::onDisconnect(evutil_socket_t fd)
     cout << "socketholder close fd: " << fd << " for reson: " << strerror(errno) << endl;
     auto id = fd % READ_LOOP_MAX;
     std::unique_lock<std::mutex> lock(syncMutex[id]);
-    chns[id].erase(fd);
+    chns[id].erase(fd); // erase before close ,because system will create the same fd,and insert chns[i].
     close(fd);
     if (isStop && chns[id].size() == 0)
     {
         event_base_loopexit(rwatchers[id].get(), nullptr);
-        event_del(pair_events[id].get());
         cout << "onDisconnect exit loop id: " << id << endl;
     }
 }
@@ -76,11 +66,9 @@ void socketholder::closeIdleChannel()
         {
             it->second->closeSafty();
         }
-        write(pair[i][1],"o",2);
         if (chns[i].size() == 0)
         {
             event_base_loopexit(rwatchers[i].get(), nullptr);
-            event_del(pair_events[i].get());
         }
     }
 }
