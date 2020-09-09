@@ -45,7 +45,7 @@ void socketholder::onConnect(evutil_socket_t fd)
 
 void socketholder::onDisconnect(evutil_socket_t fd)
 {
-    cout << "socketholder close fd: " << fd << " for reson: " << strerror(errno) << endl;
+    // cout << "socketholder close fd: " << fd << " for reson: " << strerror(errno) << endl;
     auto id = fd % READ_LOOP_MAX;
     std::unique_lock<std::mutex> lock(syncMutex[id]);
     chns[id].erase(fd); // erase before close ,because system will create the same fd,and insert chns[i].

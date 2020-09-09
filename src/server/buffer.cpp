@@ -14,17 +14,22 @@ ssize_t buffer::readsocket(evutil_socket_t fd)
     char buffer[512] = {0};
     do
     {
-        rSize = read(fd, (void *)buffer, 512);
+        rc = read(fd, (void *)buffer, 512);
         // if (rSize == 0)
         //     cout << "rSize : " << rSize << endl;
-        if (rSize > 0)
+        if (rc > 0)
         {
-            rc += rSize;
-            append(buffer, rSize);
+            rSize += rc;
+            append(buffer, rc);
         }
-    } while ((rSize == -1 && errno == EINTR) || (rSize == 512));
-
-    return rc;
+    } while ((rc == -1 && errno == EINTR) || rc > 0);
+    
+    if(errno == EAGAIN && rc == -1){
+        return rSize;
+    }else if(errno != 0){
+        return rSize > 0 ? rSize : -1;
+    }
+    return rSize;
 }
 
 /*

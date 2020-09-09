@@ -69,15 +69,15 @@ void channel::onChannelRead(short events, void *ctx)
 
     updateHearBrakeExpired();
     auto size = rBuf.readsocket(fd);
-    if (0 == size || -1 == size)
+    if (-1 == size)
     {
         // cout << "read socket error : " << strerror(errno) << endl;
-        cout << "read socket error close : " << fd << endl;
+        cout << "read socket error close : " << errno <<  endl;
         stop = true;
         handleClose();
         return;
     }
-    if (!stop)
+    if (!stop && size > 0)
     {
         wBuf.append(rBuf.readbegin(), rBuf.size());
         rBuf.reset();
