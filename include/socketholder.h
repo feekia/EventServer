@@ -25,7 +25,6 @@
 #include "threadpools.h"
 
 #define READ_LOOP_MAX (8)
-#define WRITE_LOOP_MAX (2)
 #define EVENT_BASE_WATCH_MAX (128 * 1024)
 
 using namespace std;
@@ -36,8 +35,6 @@ private:
 	std::array<raii_event_base, READ_LOOP_MAX> rwatchers;
 	std::array<std::thread, READ_LOOP_MAX> watcher_thread;
 	std::mutex syncMutex[READ_LOOP_MAX];
-	evutil_socket_t pair[READ_LOOP_MAX][2];
-	raii_event pair_events[READ_LOOP_MAX];
 	std::condition_variable condition;
 	std::atomic_bool isStop;
 	std::array<std::map<evutil_socket_t, std::shared_ptr<channel>>, READ_LOOP_MAX> chns;

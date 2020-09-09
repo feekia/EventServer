@@ -84,8 +84,6 @@ void socketholder::waitStop()
         {
             watcher_thread[i].join();
         }
-        close(pair[i][0]);
-        close(pair[i][1]);
     }
 }
 

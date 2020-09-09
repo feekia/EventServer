@@ -12,7 +12,7 @@
 #include "threadpools.h"
 
 // the constructor just launches some amount of workers
-threadpools::threadpools(size_t threads) : stop(false), size(threads)
+threadpools::threadpools(size_t threads) : size(threads), stop(false)
 {
     for (size_t i = 0; i < threads; ++i)
     {
@@ -51,12 +51,9 @@ bool threadpools::enqueue(std::function<void()> &&task, int idx)
 // the destructor joins all threads
 threadpools::~threadpools()
 {
-    for (int i = 0; i < size; i++)
+    for (size_t i = 0; i < size; i++)
     {
-        {
-            std::unique_lock<std::mutex> lock(*queue_mutex[i]);
-            stop = true;
-        }
+        stop = true;
         condition[i]->notify_all();
         workers[i].join();
         delete condition[i];

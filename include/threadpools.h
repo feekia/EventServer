@@ -27,6 +27,6 @@ private:
     // synchronization
     std::vector<std::mutex *> queue_mutex;
     std::vector< std::condition_variable *> condition;
-    bool stop;
+    std::atomic<bool> stop;
 };
 #endif
