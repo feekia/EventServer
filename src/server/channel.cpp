@@ -187,7 +187,7 @@ void channel::closeSafty()
     if (!stop)
     {
         stop = true;
-        event_active(rwEvent.get(), EV_READ, 1);
+        event_active(rwEvent.get(), EV_TIMEOUT, 1);
     }
 }
 

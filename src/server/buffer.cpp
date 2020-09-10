@@ -24,7 +24,7 @@ ssize_t buffer::readsocket(evutil_socket_t fd)
         }
     } while ((rc == -1 && errno == EINTR) || rc > 0);
     
-    if(errno == EAGAIN && rc == -1){
+    if(errno == EAGAIN){
         return rSize;
     }else if(errno != 0){
         return rSize > 0 ? rSize : -1;
