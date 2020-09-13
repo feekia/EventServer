@@ -1,4 +1,3 @@
-libevent版本是2.1
 
 ## EventServer
 libevent开发server端
