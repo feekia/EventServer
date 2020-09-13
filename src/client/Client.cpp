@@ -27,6 +27,7 @@ using namespace std;
 #define LOG(X) std::cout << "Client: " << X << std::endl
 bool isStop = false;
 std::map<evutil_socket_t, raii_event> cMap;
+std::map<evutil_socket_t, raii_event> cMap1;
 static void onSignal(evutil_socket_t sig, short events, void *ctx)
 {
 	if (!ctx)
@@ -43,17 +44,26 @@ static void onRead(evutil_socket_t socket_fd, short events, void *ctx)
 	int size = TEMP_FAILURE_RETRY(read(socket_fd, buffer, BUF_SIZE));
 	if (0 == size || -1 == size)
 	{ //说明socket关闭
+		cout << " errno: " << strerror(errno) << endl;
 		cout << "read size is " << size << " for socket: " << socket_fd << endl;
 		struct event *read_ev = (struct event *)ctx;
 		if (NULL != read_ev)
 		{
 			event_del(read_ev);
 		}
-		cMap.erase(socket_fd);
+		if (socket_fd % 2 == 0)
+		{
+			cMap.erase(socket_fd);
+		}
+		else
+		{
+			cMap1.erase(socket_fd);
+		}
+
 		close(socket_fd);
 		return;
 	}
-	LOG(buffer);
+	// LOG(size);
 }
 
 static void onTerminal(evutil_socket_t fd, short events, void *ctx)
@@ -73,7 +83,7 @@ static void onTerminal(evutil_socket_t fd, short events, void *ctx)
 	ret = write(sockfd, msg, ret);
 }
 
-#define MAX_CONNECT_CNT (10000)
+#define MAX_CONNECT_CNT (5000)
 int main()
 {
 	evthread_use_pthreads();
@@ -97,7 +107,7 @@ int main()
 		return -1;
 	}
 
-	std::thread cont_thread([&raii_base]() {
+	auto func = [&raii_base](int idx) {
 		for (int i = 0; i < MAX_CONNECT_CNT;)
 		{
 			int port = 9950;
@@ -142,23 +152,42 @@ int main()
 				close(fd);
 				continue;
 			}
-			cMap.emplace(fd, std::move(raii_socket_event));
+
+			if (fd % 2 == 0)
+			{
+				cMap.emplace(fd, std::move(raii_socket_event));
+			}
+			else
+			{
+				cMap1.emplace(fd, std::move(raii_socket_event));
+			}
+
 			i++;
-			usleep(1000);
+			// usleep(1000);
 		}
-		int idx = 0;
-		char *data = "adbdddd";
+		const char *data = "adbddddnadbddddnadbddddnadbdddd";
+		std::map<evutil_socket_t, raii_event> &map = (idx == 0) ? cMap : cMap1;
 		while (1)
 		{
-
-			std::map<evutil_socket_t, raii_event>::iterator it = cMap.begin();
-			for (it = cMap.begin(); it != cMap.end(); ++it)
+			std::map<evutil_socket_t, raii_event>::iterator it;
+			for (it = map.begin(); it != map.end(); ++it)
 			{
 				evutil_socket_t fd = it->first;
-				write(fd, data, strlen(data) + 1);
+				int s = send(fd, data, strlen(data) + 1, MSG_NOSIGNAL);
 				// cout << "SEND :" << fd << endl;
+				if (s == -1 && errno == EPIPE)
+				{
+					map.erase(it->first);
+				}
+				// usleep(10);
 			}
 		}
+	};
+	std::thread cont_thread([&func]() {
+		func(0);
+	});
+	std::thread cont_thread1([&func]() {
+		func(1);
 	});
 	std::thread work_thread([&raii_base]() {
 		event_base_loop(raii_base.get(), EVLOOP_NO_EXIT_ON_EMPTY);
@@ -167,6 +196,7 @@ int main()
 
 	work_thread.join();
 	cont_thread.join();
+	cont_thread1.join();
 
 	return 0;
 }

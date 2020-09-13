@@ -14,17 +14,22 @@ ssize_t buffer::readsocket(evutil_socket_t fd)
     char buffer[512] = {0};
     do
     {
-        rSize = read(fd, (void *)buffer, 512);
+        rc = read(fd, (void *)buffer, 512);
         // if (rSize == 0)
         //     cout << "rSize : " << rSize << endl;
-        if (rSize > 0)
+        if (rc > 0)
         {
-            rc += rSize;
-            append(buffer, rSize);
+            rSize += rc;
+            append(buffer, rc);
         }
-    } while ((rSize == -1 && errno == EINTR) || (rSize == 512));
-
-    return rc;
+    } while ((rc == -1 && errno == EINTR) || rc > 0);
+    
+    if(errno == EAGAIN){
+        return rSize;
+    }else if(errno != 0){
+        return rSize > 0 ? rSize : -1;
+    }
+    return rSize;
 }
 
 /*
@@ -44,7 +49,7 @@ ssize_t buffer::writesocket(evutil_socket_t fd)
     }
     do
     {
-        wSize = write(fd, (void *)readbegin(), size());
+        wSize = send(fd, (void *)readbegin(), size(), MSG_NOSIGNAL);
         if (wSize > 0)
         {
             rc += wSize;
@@ -56,7 +61,7 @@ ssize_t buffer::writesocket(evutil_socket_t fd)
     //     // TODO: event_add
     // }
 
-    if (wSize == -1 && errno == EBADF)
+    if (wSize == -1 && errno == EPIPE)
     {
         return -1;
     }
