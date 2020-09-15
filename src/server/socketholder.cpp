@@ -8,7 +8,7 @@ using namespace std;
 void onEvent(evutil_socket_t socket_fd, short events, void *ctx);
 void onSocketPairRead(evutil_socket_t socket_fd, short events, void *ctx);
 socketholder *socketholder::instance = nullptr;
-socketholder::socketholder() : isStop(false), pools(24)
+socketholder::socketholder() : isStop(false), pools(READ_LOOP_MAX * 2)
 {
     for (int i = 0; i < READ_LOOP_MAX; i++)
     {

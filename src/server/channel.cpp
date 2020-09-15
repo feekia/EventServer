@@ -77,7 +77,7 @@ void channel::onChannelRead(short events, void *ctx)
         handleClose();
         return;
     }
-    if (!stop && size > 0)
+    if (!stop && rBuf.size() > 0)
     {
         wBuf.append(rBuf.readbegin(), rBuf.size());
         rBuf.reset();

@@ -13,9 +13,9 @@ class buffer
 {
 private:
     char *_data;
-    ssize_t _capacity;
-    ssize_t _read_index;
-    ssize_t _write_index;
+    size_t _capacity;
+    size_t _read_index;
+    size_t _write_index;
 
 public:
     buffer() : _data(nullptr), _capacity(0), _read_index(0), _write_index(0) {}
@@ -23,7 +23,6 @@ public:
     {
         _data = new char[_capacity];
         memset(_data, 0x0, _capacity);
-        _capacity = _capacity;
     }
     /* for move */
     buffer(buffer &&b)
@@ -70,22 +69,22 @@ public:
 
     char *readbegin() const
     {
-        return _data+ _read_index;
+        return _data + _read_index;
     }
 
     // size, returns number's of unread bytes of the buffer.
-    ssize_t size() const
+    size_t size() const
     {
         assert(_write_index >= _read_index);
         return _write_index - _read_index;
     }
     // capacity, returns number's of the buffer capacity bytes.
-    ssize_t capacity() const
+    size_t capacity() const
     {
         return _capacity;
     }
 
-    void append(const void *b, ssize_t l)
+    void append(const void *b, size_t l)
     {
         assert(b != nullptr);
         const char *p = static_cast<const char *>(b);
@@ -97,67 +96,79 @@ public:
             return;
         }
 
-        if (_capacity > 0 && _read_index > 0)
+        if (readApends() + remains() > l)
         {
-            if (_read_index == _write_index)
+            memcpy(_data, _data + _read_index, _write_index - _read_index);
+            _write_index = _write_index - _read_index;
+            _read_index = 0;
+            memcpy(writebegin(), p, l);
+            _write_index += l;
+        }
+        else
+        {
+            if (_capacity == 0)
             {
+                _capacity = 256 > l ? 256 : (l - (l % 8) + 8);
+                _data = new char[_capacity];
+                memcpy(_data, p, l);
+                _write_index += l;
                 _read_index = 0;
-                _write_index = 0;
+                // cout << "buffer _capacity: " << _capacity << endl;
             }
             else
             {
-                memcpy(_data, _data + _read_index, _write_index - _read_index);
-                _write_index = _write_index - _read_index;
+                size_t n = ((_capacity << 1) > l ? (_capacity << 1) : l);
+                size_t m = size();
+                char *d = new char[n];
+                memcpy(d, readbegin(), m);
+                _write_index = m;
                 _read_index = 0;
-            }
-        }
-
-        if (remains() > l)
-        {
-            memcpy(writebegin(), p, l);
-            _write_index += l;
-            return;
-        }
-
-        for (int i = 1; i < PAGS_MAX + 1; i++)
-        {
-            if (i * DEF_LEN + remains() > l)
-            {
-                _data =  static_cast<char *>(realloc(_data, i * DEF_LEN + _capacity));
-                _capacity += i * DEF_LEN;
+                _capacity = n;
+                delete[] _data;
+                _data = d;
                 memcpy(writebegin(), p, l);
                 _write_index += l;
-                break;
+                // cout << "buffer _capacity 22: " << _capacity << endl;
             }
         }
     }
 
-    ssize_t remains() const
+    size_t remains() const
     {
         assert(_capacity >= _write_index);
         return _capacity - _write_index;
     }
 
+    size_t readApends() const
+    {
+        return _read_index;
+    }
     const char *data() const
     {
         return _data + _read_index;
     }
 
-    void reset(){
-        delete[] _data;
-        _data = nullptr;
-        _capacity = 0;
-        _read_index = 0;
-        _write_index = 0;
+    void reset()
+    {
+        if (_data)
+        {
+            delete[] _data;
+            _data = nullptr;
+            _capacity = 0;
+            _read_index = 0;
+            _write_index = 0;
+        }
     }
 
-    void updateReadIndex(ssize_t l){
-        memset(_data,0x0,_read_index + l);
+    void updateReadIndex(size_t l)
+    {
+        memset(_data, 0x0, _read_index + l);
         _read_index += l;
     }
 
-    void toString()const{
-        cout << "buffer len: " <<size() << endl;
+    void toString() const
+    {
+        cout << "buffer len: " << size() << endl;
     }
     ssize_t readsocket(evutil_socket_t fd);
     ssize_t writesocket(evutil_socket_t fd);
