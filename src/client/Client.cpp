@@ -10,6 +10,8 @@
 #include <event2/buffer.h>
 #include <event2/event-config.h>
 #include <netinet/tcp.h>
+#include <arpa/inet.h>
+
 #include <thread>
 #include <chrono>
 #include <vector>
@@ -84,8 +86,20 @@ static void onTerminal(evutil_socket_t fd, short events, void *ctx)
 }
 
 #define MAX_CONNECT_CNT (5000)
-int main()
+int main(int argc, char *argv[])
 {
+
+  
+	   if (argc < 3)
+		{
+			printf("Usage:ip port,example:127.0.0.1 8080 \n");
+			return -1;
+		}
+		int port     = atoi(argv[2]);
+		char *ip_str = argv[1];
+		
+
+
 	evthread_use_pthreads();
 	auto raii_base = obtain_event_base();
 	auto raii_signal_event = obtain_event(raii_base.get(), -1, 0, nullptr, nullptr);
@@ -107,14 +121,16 @@ int main()
 		return -1;
 	}
 
-	auto func = [&raii_base](int idx) {
+	auto func = [&raii_base,&ip_str,&port](int idx) 
+	{
 		for (int i = 0; i < MAX_CONNECT_CNT;)
 		{
-			int port = 9950;
+			//int port = 9950;
 			struct sockaddr_in my_address;
 			memset(&my_address, 0, sizeof(my_address));
 			my_address.sin_family = AF_INET;
-			my_address.sin_addr.s_addr = htonl(0x7f000001); // 127.0.0.1
+			//my_address.sin_addr.s_addr = htonl(0x7f000001); // 127.0.0.1
+			my_address.sin_addr.s_addr = inet_addr(ip_str);
 			my_address.sin_port = htons(port);
 
 			// set TCP_NODELAY to let data arrive at the server side quickly
