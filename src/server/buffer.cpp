@@ -49,7 +49,7 @@ ssize_t buffer::writesocket(evutil_socket_t fd)
     }
     do
     {
-        wSize = send(fd, (void *)readbegin(), size(), MSG_NOSIGNAL);
+        wSize = write(fd, (void *)readbegin(), size());
         if (wSize > 0)
         {
             rc += wSize;

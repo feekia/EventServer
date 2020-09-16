@@ -179,7 +179,7 @@ int main()
 				{
 					map.erase(it->first);
 				}
-				// usleep(10);
+				usleep(1);
 			}
 		}
 	};
