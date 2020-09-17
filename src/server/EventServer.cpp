@@ -21,6 +21,8 @@
 #include <signal.h>
 #include <event2/thread.h>
 
+#include <arpa/inet.h>
+
 #include "events.h"
 #include "Handler.h"
 #include "Message.h"
@@ -35,13 +37,22 @@ void errHandler(int err){
 }
 int main(int argc, char **argv)
 {
+
+	if (argc < 2)
+	 {
+		 printf("Usage:port,example:8080 \n");
+		 return -1;
+	 }
+	 int port = atoi(argv[1]);
+
 	// event_enable_debug_logging(EVENT_DBG_ALL);
 	event_set_fatal_callback(errHandler);
 	evthread_use_pthreads();
 	std::unique_ptr<acceptor> ptr_acceptor = std::make_unique<acceptor>([]() {
 		cout << " break acceptor in callback" << endl;
 	});
-	ptr_acceptor->init(9950);
+	//ptr_acceptor->init(9950);
+	ptr_acceptor->init(port);
 
 	cout << "EventServer startup" << endl;
 	ptr_acceptor->wait();
