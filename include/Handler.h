@@ -30,8 +30,8 @@ public:
 	bool sendEmptyMessage(int what);
 	bool sendEmptyMessage(int what, long uptimeMillis);
 
-	bool post(Message::Function f);
-	bool postAtTime(Message::Function f, long uptimeMillis);
+	bool post(std::function<void()> &&f);
+	bool postAtTime(std::function<void()> &&f, long uptimeMillis);
 
 	void removeMessages(int what);
 	void removeCallbackAndMessages();

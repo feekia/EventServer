@@ -27,7 +27,7 @@ public:
 
 	void setWhen(long uptimeMillis);
 
-	void setFunction(Function f);
+	void setFunction(std::function<void()> &&f);
 
 	bool operator > (const Message& msg) const {
 		return (this->when > msg.when);

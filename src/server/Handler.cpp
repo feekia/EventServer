@@ -105,10 +105,10 @@ bool Handler::sendEmptyMessage(int what,long uptimeMillis){
 	return true;
 }
 
-bool Handler::post(Message::Function f){
-	return postAtTime(f,0);
+bool Handler::post(std::function<void()> &&f){
+	return postAtTime(std::forward<std::function<void()>>(f),0);
 }
-bool Handler::postAtTime(Message::Function f, long uptimeMillis){
+bool Handler::postAtTime(std::function<void()> &&f, long uptimeMillis){
 
 	if(f == nullptr || uptimeMillis < 0){
 		return false;
@@ -117,7 +117,7 @@ bool Handler::postAtTime(Message::Function f, long uptimeMillis){
 	std::unique_lock<std::mutex> lock(queue_mutex);
 	Message msg;
 	msg.setWhen(uptimeMillis);
-	msg.setFunction(f);
+	msg.setFunction(std::forward<std::function<void()>>(f));
 	msg_Q.push_back(msg);
 	std::sort(msg_Q.begin(), msg_Q.end(),std::greater<Message>());
 

@@ -19,7 +19,7 @@ void Message::setWhen(long uptimeMillis){
 	when = std::chrono::system_clock::now() + std::chrono::milliseconds(uptimeMillis);
 }
 
-void Message::setFunction(Function f){
+void Message::setFunction(std::function<void()> &&f){
 	this->task = f;
 }
 Message::~Message(){
