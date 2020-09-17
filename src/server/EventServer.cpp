@@ -51,7 +51,6 @@ int main(int argc, char **argv)
 	std::unique_ptr<acceptor> ptr_acceptor = std::make_unique<acceptor>([]() {
 		cout << " break acceptor in callback" << endl;
 	});
-	//ptr_acceptor->init(9950);
 	ptr_acceptor->init(port);
 
 	cout << "EventServer startup" << endl;

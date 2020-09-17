@@ -88,8 +88,6 @@ static void onTerminal(evutil_socket_t fd, short events, void *ctx)
 #define MAX_CONNECT_CNT (5000)
 int main(int argc, char *argv[])
 {
-
-  
 	   if (argc < 3)
 		{
 			printf("Usage:ip port,example:127.0.0.1 8080 \n");
@@ -179,7 +177,6 @@ int main(int argc, char *argv[])
 			}
 
 			i++;
-			// usleep(1000);
 		}
 		const char *data = "adbddddnadbddddnadbddddnadbdddd";
 		std::map<evutil_socket_t, raii_event> &map = (idx == 0) ? cMap : cMap1;
