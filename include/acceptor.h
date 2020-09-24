@@ -23,13 +23,14 @@
 #include "socketholder.h"
 
 using namespace std;
+#define LISTEN_CNT (2)
+
 class acceptor
 {
 private:
-	raii_event_base base;
-	raii_evconnlistener listener;
-	raii_event signal_event;
-	raii_event pipe_event;
+	std::array<raii_event_base, LISTEN_CNT> bases;
+	std::array<std::thread, LISTEN_CNT> threads;
+	std::array<raii_evconnlistener, LISTEN_CNT> listeners;
 	std::shared_ptr<socketholder> holder;
 	std::function<void()> breakCb;
 	

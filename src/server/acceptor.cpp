@@ -21,56 +21,25 @@ using namespace std;
 
 #define BUF_SIZE 1024
 
-typedef void (*f_signal)(evutil_socket_t, short, void *);
-
 static std::atomic<bool> isStop(false);
 
-static void signal_int(evutil_socket_t sig, short events, void *ctx)
-{
-	struct event_base *base = (struct event_base *)ctx;
-	cout << "Caught an signal : " << events << endl;
-	if (!isStop)
-	{
-		isStop = true;
-		cout << "Caught an signal : SIGINT" << endl;
-		event_base_loopexit(base, nullptr);
-	}
-}
-
-static void signal_pipe(evutil_socket_t sig, short events, void *ctx)
-{
-	cout << "signal_pipe: " << sig << endl;
-}
-acceptor::acceptor(std::function<void()> &&f) : base(nullptr), listener(nullptr), signal_event(nullptr), pipe_event(nullptr), holder(nullptr), breakCb(f)
+acceptor::acceptor(std::function<void()> &&f) : holder(nullptr), breakCb(f)
 {
 }
 
 int acceptor::init(int port)
 {
-	auto flags = EV_SIGNAL | EV_PERSIST;
 	struct sockaddr_in sin;
-
 	memset(&sin, 0, sizeof(sin));
 	sin.sin_family = AF_INET;
 	sin.sin_port = htons(port);
 
-	base = obtain_event_base();
-
-	listener = obtain_evconnlistener(base.get(), acceptor::connection_cb, (void *)this,
-									 LEV_OPT_REUSEABLE | LEV_OPT_CLOSE_ON_FREE, -1, (struct sockaddr *)&sin, sizeof(sin));
-
-	signal_event = obtain_event(base.get(), SIGINT, flags, signal_int, (void *)base.get());
-	if (!signal_event.get() || event_add(signal_event.get(), nullptr) < 0)
+	for (int i = 0; i < LISTEN_CNT; i++)
 	{
-		cout << "Could not create/add a SIGINT event -!" << endl;
+		bases[i] = obtain_event_base();
+		listeners[i] = obtain_evconnlistener(bases[i].get(), acceptor::connection_cb, (void *)this,
+											 LEV_OPT_REUSEABLE | LEV_OPT_REUSEABLE_PORT, -1, (struct sockaddr *)&sin, sizeof(sin));
 	}
-
-	pipe_event = obtain_event(base.get(), SIGPIPE, flags, signal_pipe, (void *)base.get());
-	if (!pipe_event.get() || event_add(pipe_event.get(), nullptr) < 0)
-	{
-		cout << "Could not create/add a SIGPIPE event -!" << endl;
-	}
-
 	// holder = std::make_shared<socketholder>();
 	holder = std::shared_ptr<socketholder>(socketholder::getInstance());
 	return 0;
@@ -81,10 +50,11 @@ void acceptor::connection_cb(struct evconnlistener *listener, evutil_socket_t fd
 {
 	if (ctx == nullptr)
 		return;
-	
+
 	con_cnt++;
-	if(con_cnt == 1){
-		locald= std::chrono::system_clock::now().time_since_epoch();
+	if (con_cnt == 1)
+	{
+		locald = std::chrono::system_clock::now().time_since_epoch();
 	}
 
 	if (con_cnt > 20)
@@ -93,11 +63,11 @@ void acceptor::connection_cb(struct evconnlistener *listener, evutil_socket_t fd
 		std::chrono::milliseconds msec = std::chrono::duration_cast<std::chrono::milliseconds>(d);
 		std::chrono::milliseconds localmsec = std::chrono::duration_cast<std::chrono::milliseconds>(locald);
 		int64_t diff = msec.count() - localmsec.count();
-		if (diff > 10 * 1000)
+		if (diff > 5 * 1000)
 		{
 			cout << " connect tid: " << std::this_thread::get_id() << " con_cnt : " << con_cnt << endl;
 			locald = std::chrono::system_clock::now().time_since_epoch();
-			con_cnt= 0;
+			con_cnt = 0;
 		}
 	}
 
@@ -120,15 +90,29 @@ void acceptor::onListenBreak()
 
 void acceptor::stop()
 {
-	event_base_loopexit(base.get(), nullptr);
+	if (!isStop)
+	{
+		isStop = true;
+		for (int i = 0; i < LISTEN_CNT; i++)
+		{
+			event_base_loopexit(bases[i].get(), nullptr);
+		}
+	}
 }
 
 void acceptor::wait()
 {
-	event_base_loop(this->base.get(), EVLOOP_NO_EXIT_ON_EMPTY);
-	cout << " exit the acceptor wait" << endl;
-	listener.reset();
-	signal_event.reset();
+	for (int i = 0; i < LISTEN_CNT; i++)
+	{
+		threads[i] = std::thread([this, i]() {
+			event_base_loop(this->bases[i].get(), EVLOOP_NO_EXIT_ON_EMPTY);
+		});
+	}
+
+	for (int i = 0; i < LISTEN_CNT; i++)
+	{
+		threads[i].join();
+	}
 	onListenBreak();
 	cout << " exit the acceptor wait" << endl;
 }

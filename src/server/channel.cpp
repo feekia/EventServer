@@ -1,6 +1,6 @@
 #include "channel.h"
 #include "socketholder.h"
-channel::channel(std::weak_ptr<socketholder> &&h, evutil_socket_t _fd) : fd(_fd), holder(h), stop(false), isProc(false), isClose(false)
+channel::channel(std::weak_ptr<socketholder> &&h, evutil_socket_t _fd) : fd(_fd), holder(h), stop(false), isClose(false)
 {
     state.store(INIT);
     std::chrono::system_clock::duration d = std::chrono::system_clock::now().time_since_epoch();
@@ -212,7 +212,6 @@ void channel::handleEvent(short events)
             onChannelTimeout(events, nullptr);
         }
 
-        setProcing(false);
     }
     // 单独提出来调用 onDisconnect 是为了避免 channel里面的锁和socketholder里面的锁竞争，影响效率或者导致死锁
     if (CLOSE == state)

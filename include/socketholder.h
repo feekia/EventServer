@@ -60,7 +60,6 @@ public:
 	}
 
 	friend void onEvent(evutil_socket_t socket_fd, short events, void *ctx);
-	friend void onSocketPairRead(evutil_socket_t socket_fd, short events, void *ctx);
 
 public:
 	static socketholder *getInstance()

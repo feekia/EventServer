@@ -232,9 +232,24 @@ void Serialization_Streambuffer()
 class Req
 {
 public:
-    Req() {}
-    Req(const string &n) : name(n) {}
+    Req() {
+        cout << "constructor"<<endl;
+    }
+    Req(const Req &r){
+        cout << "lvalue constructor"<<endl;
+        name = r.name;
+    }
+    Req(const Req &&r){
+        cout << "rvalue constructor"<<endl;
+        name = std::move(r.name);
+    }
+    Req(const string &n) : name(n) {
+        cout <<"name constructor" <<endl;
+    }
 
+    Req(const string &&n) : name(n) {
+        cout <<"right name constructor" <<endl;
+    }
 private:
     string name;
     friend std::ostream &operator<<(std::ostream &os, Req &r)
@@ -463,6 +478,12 @@ private:
     bool myAtStartOfLine;
 };
 
+Req getReq(string &&s){
+    Req r(std::forward<std::string>(s));
+    
+    std::forward<std::string>(s);
+    return r;
+}
 int main()
 {
     // create special output buffer
@@ -476,5 +497,14 @@ int main()
     // std::ostream oo(&filebuf);
     // oo << "asdfasdfasdf"<<endl;
     stringstream ss;
+
+    ss << "asdfasdgf"<<"------------" << "1234";
+    std::string &&s = ss.str();
+    cout << s <<endl;
+
+    Req &&r = getReq("first");
+    Req rr = getReq("second");
+    cout << r << endl;
+    cout << rr << endl;
     return 0;
 }

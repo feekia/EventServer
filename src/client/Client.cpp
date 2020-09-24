@@ -180,7 +180,7 @@ int main(int argc, char *argv[])
 		}
 		const char *data = "adbddddnadbddddnadbddddnadbdddd";
 		std::map<evutil_socket_t, raii_event> &map = (idx == 0) ? cMap : cMap1;
-		while (1)
+		while (!isStop)
 		{
 			std::map<evutil_socket_t, raii_event>::iterator it;
 			for (it = map.begin(); it != map.end(); ++it)
@@ -192,7 +192,7 @@ int main(int argc, char *argv[])
 				{
 					map.erase(it->first);
 				}
-				usleep(1);
+				usleep(2);
 			}
 		}
 	};

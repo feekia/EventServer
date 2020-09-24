@@ -37,7 +37,6 @@ private:
     std::weak_ptr<socketholder> holder;
     std::mutex cMutex;
     std::atomic<bool> stop;
-    std::atomic<bool> isProc;
     std::atomic<bool> isClose;
     std::atomic<int8_t> state;
     buffer wBuf;
@@ -63,14 +62,6 @@ public:
     void onChannelWrite(short events, void *ctx);
     void onChannelTimeout(short events, void *ctx);
     void handleEvent(short events);
-    bool isProcing()
-    {
-        return isProc;
-    }
-    void setProcing(bool b)
-    {
-        isProc = b;
-    }
     void closeSafty();
 
 private:

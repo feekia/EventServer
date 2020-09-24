@@ -20,7 +20,7 @@
 #include <string.h>
 #include <signal.h>
 #include <event2/thread.h>
-
+#include <csignal>
 #include <arpa/inet.h>
 
 #include "events.h"
@@ -32,31 +32,54 @@ using namespace std;
 #if 1
 #include "acceptor.h"
 
-void errHandler(int err){
+void errHandler(int err)
+{
 	cout << "error in lv: " << err << endl;
 }
+
+static acceptor *pacceptor = nullptr;
+void sigHandler(int sig)
+{
+	cout << "sigHandler sig: " << sig << endl;
+	if(pacceptor == nullptr){
+		return;
+	}
+	switch (sig)
+	{
+	case SIGINT:
+		pacceptor->stop();
+		break;
+	case SIGPIPE:
+		break;	
+	default:
+		break;
+	}
+}
+
 int main(int argc, char **argv)
 {
 
 	if (argc < 2)
-	 {
-		 printf("Usage:port,example:8080 \n");
-		 return -1;
-	 }
-	 int port = atoi(argv[1]);
-
+	{
+		printf("Usage:port,example:8080 \n");
+		return -1;
+	}
+	int port = atoi(argv[1]);
+	std::signal(SIGINT, sigHandler);
+	std::signal(SIGPIPE, sigHandler);
 	// event_enable_debug_logging(EVENT_DBG_ALL);
 	event_set_fatal_callback(errHandler);
 	evthread_use_pthreads();
-	std::unique_ptr<acceptor> ptr_acceptor = std::make_unique<acceptor>([]() {
+	pacceptor = new acceptor([]() {
 		cout << " break acceptor in callback" << endl;
 	});
-	ptr_acceptor->init(port);
+	pacceptor->init(port);
 
 	cout << "EventServer startup" << endl;
-	ptr_acceptor->wait();
+	pacceptor->wait();
 	cout << "main thread exit" << endl;
-	ptr_acceptor.reset();
+	delete pacceptor;
+	pacceptor = nullptr;
 	std::this_thread::sleep_for(std::chrono::seconds(2));
 	return 0;
 }
