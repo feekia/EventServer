@@ -1,6 +1,6 @@
 
-## EventServer （基于libevent开发server & client）
-1. handler 仿android实现
+## 代码特性
+1. handler 用于异步消息的处理
 2. threadpool实现
 3. libevent 多线程io
 
@@ -17,23 +17,20 @@
 
 ## 注意事项
 1. libevent需要 2.1.8以上的版本，否则不支持该宏：EVLOOP_NO_EXIT_ON_EMPTY
-2. GCC 需要支持C++14 请自行安装高版本的GCC
-3. 编译脚本生成使用的是automake autoconf ，请百度自行安装相应工具。
+    sudo apt install libevent-dev
+    sudo apt install cmake
+    sudo apt install clang
   
 ## 编译
-    ./autogen.sh
-    ./configure
+    cmake .
     make
 
 ## clean
     make clean
 
-    如使用以下命令，则需要重新执行 autogen.sh 以及 configure
-    make distclean
-
 ## 执行（server 和 client 在同一台主机）
-    ./src/server/EventServer 9950
-    ./src/client/EventClient 127.0.0.1 9950
+    ./bin/server/EventServer 9950
+    ./bin/client/EventClient 127.0.0.1 9950
 
 目前在同一台主机上测试，由于端口分配的限制，只能测试5万个链接，5个client线程分别轮询1万个socket 进行发送数据，服务端会原样返回client发过去的数据。
 
