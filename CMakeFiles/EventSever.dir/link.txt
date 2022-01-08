@@ -1,1 +1,0 @@
-clang++   -Wall -fPIC -pipe -std=c++11 -fexceptions -O3 -DNDEBUG   CMakeFiles/EventSever.dir/server/event_server.cc.o  -o bin/EventSever   -L/mnt/e/github/EventServer/lib  -Wl,-rpath,/mnt/e/github/EventServer/lib lib/libhandler.a lib/libnetwork.a -levent -levent_pthreads -levent_core -lpthread 

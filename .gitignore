@@ -25,3 +25,8 @@ src/server/Makefile
 src/test/Makefile
 src/test/test
 stamp-h1
+
+CMakeCache.txt
+CMakeFiles/
+lib/
+cmake_install.cmake
