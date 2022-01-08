@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../lib/libnetwork.a  CMakeFiles/network.dir/acceptor.cc.o CMakeFiles/network.dir/buffer.cc.o CMakeFiles/network.dir/channel.cc.o CMakeFiles/network.dir/socket_holder.cc.o CMakeFiles/network.dir/thread_pools.cc.o
+/usr/bin/ranlib ../lib/libnetwork.a
