@@ -22,14 +22,16 @@ LINK_DIRECTORIES( ${PROJECT_SOURCE_DIR}/lib)
 INCLUDE_DIRECTORIES( ${PROJECT_SOURCE_DIR}/handler)
 INCLUDE_DIRECTORIES( ${PROJECT_SOURCE_DIR}/network)
 INCLUDE_DIRECTORIES( ${PROJECT_SOURCE_DIR}/utils)
+INCLUDE_DIRECTORIES( ${PROJECT_SOURCE_DIR}/timer)
 
 add_subdirectory(handler)
 add_subdirectory(network)
+add_subdirectory(timer)
 
 add_executable(EventSever ${PROJECT_SOURCE_DIR}/server/event_server.cc)
 
 add_executable(EventClient ${PROJECT_SOURCE_DIR}/client/event_client.cc)
 
-target_link_libraries(EventSever handler network event event_pthreads event_core pthread)
+target_link_libraries(EventSever handler network event event_pthreads event_core pthread timer)
 
 target_link_libraries(EventClient handler network event event_pthreads event_core pthread)

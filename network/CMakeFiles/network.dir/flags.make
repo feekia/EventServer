@@ -6,5 +6,5 @@ CXX_FLAGS =  -Wall -fPIC -pipe -std=c++11 -fexceptions -O3 -DNDEBUG
 
 CXX_DEFINES = 
 
-CXX_INCLUDES = -I/mnt/e/github/EventServer/handler -I/mnt/e/github/EventServer/network -I/mnt/e/github/EventServer/utils 
+CXX_INCLUDES = -I/mnt/e/github/EventServer/handler -I/mnt/e/github/EventServer/network -I/mnt/e/github/EventServer/utils -I/mnt/e/github/EventServer/timer 
 
