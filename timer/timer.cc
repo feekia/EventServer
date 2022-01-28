@@ -16,6 +16,7 @@ namespace es {
 Timer::Timer() : newTasksMayBeScheduled(true) { queue = new TaskQueue(); }
 
 Timer::~Timer() {
+    finalize();
     worker_.join();
 
     delete queue;
@@ -29,25 +30,18 @@ void Timer::finalize() {
     notify();
 }
 
-void Timer::schedule(TimerTask &task, int64_t delay) {
+void Timer::schedule(TimerTask &&task, int64_t delay) {
     if (delay < 0) return;
-    sched(task, delay, 0);
+    sched(std::move(task), delay, 0);
 }
 
-void Timer::schedule(TimerTask &task, int64_t delay, int64_t period) {
-    if (delay < 0) return;
-    if (period < 0) return;
-
-    sched(task, delay, period);
-}
-
-void Timer::scheduleAtFixedRate(TimerTask &task, int64_t delay, int64_t period) {
+void Timer::scheduleAtFixedRate(TimerTask &&task, int64_t delay, int64_t period) {
     if (delay < 0) return;
     if (period <= 0) return;
-    sched(task, delay, period);
+    sched(std::move(task), delay, period);
 }
 
-void Timer::sched(TimerTask &task, int64_t delay, int64_t period) {
+void Timer::sched(TimerTask &&task, int64_t delay, int64_t period) {
 
     {
         lock_guard<mutex> guard(lock);

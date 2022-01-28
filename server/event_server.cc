@@ -120,8 +120,8 @@ int main(int argc, char **argv) {
         cout << "onRun is invoke 2 !" << endl;
     });
 
-    timer.schedule(t, 1000);
-    timer.schedule(t2, 3000, 1000);
+    timer.schedule(std::move(t), 1000);
+    timer.scheduleAtFixedRate(std::move(t2), 3000, 1000);
     timer.Start();
 
     std::this_thread::sleep_for(std::chrono::milliseconds(5000));

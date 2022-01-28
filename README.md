@@ -3,6 +3,7 @@
 1. handler 用于异步消息的处理
 2. threadpool实现
 3. libevent 多线程io
+4. timer 调度实现
 
 ## 框架层次设计
 1. payload protocol(json or other) (未开发)
@@ -17,20 +18,24 @@
 
 ## 注意事项
 1. libevent需要 2.1.8以上的版本，否则不支持该宏：EVLOOP_NO_EXIT_ON_EMPTY
+
     sudo apt install libevent-dev
+
     sudo apt install cmake
+
     sudo apt install clang
   
 ## 编译
     cmake .
+
     make
 
 ## clean
     make clean
 
 ## 执行（server 和 client 在同一台主机）
-    ./bin/server/EventServer 9950
-    ./bin/client/EventClient 127.0.0.1 9950
+    ./bin/EventServer 9950
+    ./bin/EventClient 127.0.0.1 9950
 
 目前在同一台主机上测试，由于端口分配的限制，只能测试5万个链接，5个client线程分别轮询1万个socket 进行发送数据，服务端会原样返回client发过去的数据。
 

@@ -33,24 +33,17 @@ private:
 public:
     ~Timer();
     Timer();
-    void    finalize();
-    int32_t serialNumber();
 
-    void schedule(TimerTask &task, int64_t delay);
-    void schedule(TimerTask &task, int64_t delay, int64_t period);
-
-    void scheduleAtFixedRate(TimerTask &task, int64_t delay, int64_t period);
-
-    void    sched(TimerTask &task, int64_t delay, int64_t period);
-    void    cancel();
-    int32_t purge();
-
+    void schedule(TimerTask &&task, int64_t delay);
+    void scheduleAtFixedRate(TimerTask &&task, int64_t delay, int64_t period);
+    void cancel();
     void Start();
 
 private:
-    void mainLoop();
-
+    void        mainLoop();
+    void        finalize();
     inline void notify() { condition.notify_one(); }
+    void        sched(TimerTask &&task, int64_t delay, int64_t period);
 };
 
 } // namespace es

@@ -43,7 +43,7 @@ private:
 
     /**
      * Next execution time for this task in the format returned by
-     * System.currentTimeMillis, assuming this task is scheduled for execution.
+     * , assuming this task is scheduled for execution.
      * For repeating tasks, this field is updated prior to each task execution.
      */
     TimePoint_t nextExecutionTime;
