@@ -23,10 +23,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "acceptor.h"
+#include "event_raii.h"
 #include "handler.h"
 #include "message.h"
-#include "event_raii.h"
-#include "acceptor.h"
 
 using namespace std;
 using namespace es;
@@ -102,6 +102,29 @@ int main(int argc, char **argv) {
     while (true) {
         std::this_thread::sleep_for(std::chrono::seconds(100000));
     }
+    return 1;
+}
+#else
+#include "timer.h"
+int main(int argc, char **argv) {
+    cout << "IN main" << endl;
+    Timer     timer;
+    TimerTask t;
+    t.onRun([&]() {
+        cout << "onRun is invoke 1 !" << endl;
+    });
+
+
+    TimerTask t2;
+    t2.onRun([&]() {
+        cout << "onRun is invoke 2 !" << endl;
+    });
+
+    timer.schedule(t, 1000);
+    timer.schedule(t2, 3000, 1000);
+    timer.Start();
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(5000));
     return 1;
 }
 #endif

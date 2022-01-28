@@ -1,9 +1,9 @@
 #include "timer.h"
 #include "task_queue.h"
 #include "timer_task.h"
-#include "timer_thread.h"
 #include <atomic>
 #include <inttypes.h>
+#include <iostream>
 #include <math.h>
 #include <mutex>
 #include <string>
@@ -13,22 +13,20 @@ using namespace std;
 
 namespace es {
 
-Timer::Timer() {
-    queue  = new TaskQueue();
-    worker = new TimerThread(queue);
-}
+Timer::Timer() : newTasksMayBeScheduled(true) { queue = new TaskQueue(); }
 
 Timer::~Timer() {
-    delete worker;
-    worker = nullptr;
+    worker_.join();
+
     delete queue;
+    cout << "~Timer" << endl;
     queue = nullptr;
 }
 
 void Timer::finalize() {
     lock_guard<mutex> guard(lock);
-    worker->newTasksMayBeScheduled = false;
-    worker->notify(); // In case queue is empty.
+    newTasksMayBeScheduled = false;
+    notify();
 }
 
 void Timer::schedule(TimerTask &task, int64_t delay) {
@@ -38,7 +36,7 @@ void Timer::schedule(TimerTask &task, int64_t delay) {
 
 void Timer::schedule(TimerTask &task, int64_t delay, int64_t period) {
     if (delay < 0) return;
-    if (period <= 0) return;
+    if (period < 0) return;
 
     sched(task, delay, period);
 }
@@ -51,46 +49,88 @@ void Timer::scheduleAtFixedRate(TimerTask &task, int64_t delay, int64_t period) 
 
 void Timer::sched(TimerTask &task, int64_t delay, int64_t period) {
 
-    if (abs(period) > (0xFFFFFFFFFFFFFFFF >> 1)) period >>= 1;
-
-    std::chrono::system_clock::duration current = std::chrono::system_clock::now().time_since_epoch();
-    std::chrono::milliseconds           msec    = std::chrono::duration_cast<std::chrono::milliseconds>(current);
     {
         lock_guard<mutex> guard(lock);
-        if (!worker->newTasksMayBeScheduled) return;
+        if (!newTasksMayBeScheduled) return;
 
         {
-            lock_guard<mutex> guard(task.lock);
+            lock_guard<mutex> guard(task);
             if (task.state != VIRGIN) return;
-            task.nextExecutionTime = msec.count() + delay;
-            task.period            = period;
+            task.nextExecutionTime = Clock_t::now() + std::chrono::milliseconds(delay);
+            task.period            = std::chrono::milliseconds(period);
             task.state             = SCHEDULED;
         }
 
         queue->add(task);
-        if (queue->getMin() == task) worker->notify();
+        notify();
     }
 }
 
 void Timer::cancel() {
     lock_guard<mutex> guard(lock);
-    worker->newTasksMayBeScheduled = false;
+    newTasksMayBeScheduled = false;
     queue->clear();
-    worker->notify(); // In case queue was already empty.
+    notify(); // In case queue was already empty.
 }
 
-int32_t Timer::purge() {
-    int32_t result = 0;
-    {
-        lock_guard<mutex> guard(lock);
+void Timer::Start() {
+    worker_ = thread([this]() {
+        mainLoop();
+        {
+            unique_lock<mutex> unique_guard(this->lock);
+            this->newTasksMayBeScheduled = false;
+            this->queue->clear(); // Eliminate obsolete references
+            cout << "Timer is quit !" << endl;
+        }
+    });
+    // worker_.detach();
+}
 
-        for (int32_t i = queue->size(); i > 0; i--) {
-            if (queue->get(i).state == CANCELLED) {
-                queue->quickRemove(i);
-                result++;
+/**
+ * The main timer loop.  (See class comment.)
+ */
+void Timer::mainLoop() {
+    while (true) {
+        TimerTask task;
+        bool      taskFired = false;
+        {
+            unique_lock<mutex> unique_guard(lock);
+            // Wait for queue to become non-empty
+            while (queue->isEmpty() && newTasksMayBeScheduled) {
+                condition.wait(unique_guard, [this] { return !this->queue->isEmpty(); });
+            }
+
+            if (queue->isEmpty()) break; // Queue is empty and will forever remain; die
+
+            // Queue nonempty; look at first evt and do the right thing
+            std::chrono::milliseconds waitFor;
+            task = queue->getFront();
+            {
+                lock_guard<mutex> guard(task);
+                if (task.state == CANCELLED) {
+                    queue->removeFront();
+                    continue; // No action required, poll queue again
+                }
+
+                TimePoint_t currentTime = Clock_t::now();
+                waitFor = std::chrono::duration_cast<std::chrono::milliseconds>(task.nextExecutionTime - currentTime);
+                if (task.nextExecutionTime <= currentTime) {
+                    taskFired = true;
+                    if (task.period == std::chrono::milliseconds(0)) { // Non-repeating, remove
+                        queue->removeFront();
+                        task.state = EXECUTED;
+                    } else { // Repeating task, reschedule
+                        queue->rescheduleFront(task.nextExecutionTime + task.period);
+                    }
+                }
+            }
+
+            if (!taskFired) { // Task hasn't yet fired; wait
+                condition.wait_for(unique_guard, waitFor);
             }
         }
+        if (taskFired) // Task fired; run it, holding no locks
+            task.run();
     }
-    return result;
 }
 } // end of namespace es

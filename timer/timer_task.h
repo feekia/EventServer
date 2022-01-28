@@ -1,6 +1,8 @@
 #ifndef _TIMER_TASK_H_
 #define _TIMER_TASK_H_
 
+#include <chrono>
+#include <ctime>
 #include <functional>
 #include <inttypes.h>
 #include <mutex>
@@ -9,7 +11,6 @@ using namespace std;
 
 namespace es {
 
-class TimerThread;
 class Timer;
 
 enum {
@@ -33,7 +34,10 @@ enum {
     CANCELLED = 3,
 };
 
-class TimerTask {
+class TimerTask : private std::mutex {
+    using TimePoint_t = std::chrono::time_point<std::chrono::steady_clock>;
+    using Clock_t     = std::chrono::steady_clock;
+
 private:
     int32_t state = VIRGIN;
 
@@ -42,54 +46,64 @@ private:
      * System.currentTimeMillis, assuming this task is scheduled for execution.
      * For repeating tasks, this field is updated prior to each task execution.
      */
-    int64_t nextExecutionTime;
+    TimePoint_t nextExecutionTime;
 
     /**
      * Period in milliseconds for repeating tasks.  A positive value indicates
      * fixed-rate execution.  A negative value indicates fixed-delay execution.
      * A value of 0 indicates a non-repeating task.
      */
-    int64_t period = 0;
+    std::chrono::milliseconds period;
 
     /**
      * This lock is used to control access to the TimerTask internals.
      */
-    mutex            lock;
-    function<void()> run;
-
-    friend class TimerThread;
+    std::function<void()> run;
     friend class Timer;
     friend class TaskQueue;
 
 public:
-    TimerTask() {}
-    TimerTask(function<void()> &&callback);
-    TimerTask(const TimerTask &t) { run = t.run; }
+    TimerTask() : state(VIRGIN) {}
+    TimerTask(const TimerTask &t) {
+        nextExecutionTime = t.nextExecutionTime;
+        period            = t.period;
+        run               = t.run;
+    }
     TimerTask &operator=(const TimerTask &t) {
-        run = t.run;
+        if (&t == this) return *this;
+        run               = t.run;
+        nextExecutionTime = t.nextExecutionTime;
+        period            = t.period;
         return *this;
     }
 
-    bool operator==(const TimerTask &t) {
-        if(nextExecutionTime == t.nextExecutionTime) return true;
-        return false;
+    TimerTask &operator=(TimerTask &&t) {
+        if (&t == this) return *this;
+        run               = std::move(t.run);
+        nextExecutionTime = std::move(t.nextExecutionTime);
+        period            = std::move(t.period);
+        return *this;
     }
-    ~TimerTask();
+
+    void onRun(function<void()> &&callback) { run = std::move(callback); }
+
+    ~TimerTask() { state = CANCELLED; }
     inline bool cancel() {
-        lock_guard<mutex> guard(lock);
+        lock_guard<mutex> guard(*this);
 
         bool result = (state == SCHEDULED);
         state       = CANCELLED;
         return result;
     }
 
-    inline int64_t scheduledExecutionTime() {
-        lock_guard<mutex> guard(lock);
-        return (period < 0 ? nextExecutionTime + period : nextExecutionTime - period);
-    }
-
     friend bool operator<(const TimerTask &t1, const TimerTask &t2) {
         if (t1.nextExecutionTime < t2.nextExecutionTime) return true;
+
+        return false;
+    }
+
+    friend bool operator==(const TimerTask &t1, const TimerTask &t2) {
+        if (t1.nextExecutionTime == t2.nextExecutionTime) return true;
 
         return false;
     }
