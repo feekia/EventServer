@@ -34,8 +34,8 @@
     make clean
 
 ## 执行（server 和 client 在同一台主机）
-    ./bin/EventServer 9950
-    ./bin/EventClient 127.0.0.1 9950
+    ./bin/server 9950
+    ./bin/client 127.0.0.1 9950
 
 目前在同一台主机上测试，由于端口分配的限制，只能测试5万个链接，5个client线程分别轮询1万个socket 进行发送数据，服务端会原样返回client发过去的数据。
 
