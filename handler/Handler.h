@@ -3,13 +3,11 @@
 #define HANDLER_H
 
 #include <chrono>
+#include <condition_variable>
+#include <list>
 #include <map>
 #include <mutex>
-#include <vector>
 #include <thread>
-#include <condition_variable>
-
-
 
 #include "message.h"
 
@@ -19,52 +17,44 @@
  * 1. send message to the handler
  * 2. post the task(Function) to handler
  */
-
-class Handler{
+namespace es {
+class Handler {
 public:
-	Handler();
-	virtual ~Handler();
+    Handler();
+    virtual ~Handler();
 
-	bool sendMessageAtTime(Message& msg, long uptimeMillis);
-	bool sendMessage(Message& msg);
-	bool sendEmptyMessage(int what);
-	bool sendEmptyMessage(int what, long uptimeMillis);
+    bool sendMessageDelay(Message &msg, long delayMillis);
+    bool sendMessage(Message &msg);
+    bool sendEmptyMessageDelay(int what);
+    bool sendEmptyMessageDelay(int what, long delayMillis);
+    bool post(std::function<void()> &&f);
+    bool postDelay(std::function<void()> &&f, long delayMillis);
+    void removeMessages(int what);
+    void removeAlls();
+    void stop();
 
-	bool post(std::function<void()> &&f);
-	bool postAtTime(std::function<void()> &&f, long uptimeMillis);
+    virtual void handleMessage(Message &msg);
 
-	void removeMessages(int what);
-	void removeCallbackAndMessages();
-
-	void stopSafty(bool stopSafty);
-
-	bool isQuiting();
-
-	virtual void handleMessage(Message& msg);
-
-	void dispatchMessage(Message& msg);
-
-	/*
-	 * for msgQueue sorted when insert,
-	 * ascending order
-	 */
-	template<class T>
-	class ValComp {
-	public:
-		bool operator()(const T& t1,const T& t2) const {
-			return (t1 < t2);
-		}
-
-	};
+    /*
+     * for msg list sorted when insert,  in ascending order !
+     *
+     */
+    template <class T>
+    class Compare {
+    public:
+        bool operator()(const T &t1, const T &t2) const { return (t1 < t2); }
+    };
 
 private:
-	std::vector<Message> msg_Q;
+    void dispatchMessage(Message &msg);
 
-	std::mutex queue_mutex;
-	std::condition_variable condition;
-	std::thread looper;
-	bool stop;
-	bool stopWhenEmpty;
+private:
+    std::list<Message> msg_list;
+
+    std::mutex              queue_mutex;
+    std::condition_variable condition;
+    std::thread             looper;
+    bool                    is_stop;
 };
-
+} // namespace es
 #endif

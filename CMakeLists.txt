@@ -4,7 +4,7 @@ project(Event)
 
 SET(CMAKE_CXX_COMPILER "clang++")         #设置编译器（可选的有gcc，g++）
 
-set( CMAKE_BUILD_TYPE Release )
+set( CMAKE_BUILD_TYPE debug )
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -fPIC -pipe -std=c++11 -fexceptions")
 
@@ -23,15 +23,9 @@ INCLUDE_DIRECTORIES( ${PROJECT_SOURCE_DIR}/handler)
 INCLUDE_DIRECTORIES( ${PROJECT_SOURCE_DIR}/network)
 INCLUDE_DIRECTORIES( ${PROJECT_SOURCE_DIR}/utils)
 INCLUDE_DIRECTORIES( ${PROJECT_SOURCE_DIR}/timer)
+INCLUDE_DIRECTORIES( ${PROJECT_SOURCE_DIR}/include)
 
 add_subdirectory(handler)
 add_subdirectory(network)
 add_subdirectory(timer)
-
-add_executable(EventSever ${PROJECT_SOURCE_DIR}/server/event_server.cc)
-
-add_executable(EventClient ${PROJECT_SOURCE_DIR}/client/event_client.cc)
-
-target_link_libraries(EventSever handler network event event_pthreads event_core pthread timer)
-
-target_link_libraries(EventClient handler network event event_pthreads event_core pthread)
+add_subdirectory(examples)

@@ -22,8 +22,8 @@ ThreadPool::ThreadPool(size_t threads) : size(threads), stop(false) {
             std::function<void()> task;
             for (;;) {
                 {
-                    std::unique_lock<std::mutex> lock(*this->queue_mutex[i]);
-                    this->condition[i]->wait(lock, [this, i] { return this->stop || !this->tasks[i].empty(); });
+                    std::unique_lock<std::mutex> guard(*this->queue_mutex[i]);
+                    this->condition[i]->wait(guard, [this, i] { return this->stop || !this->tasks[i].empty(); });
                     if (this->stop && this->tasks[i].empty()) return;
                     task = std::move(this->tasks[i].front());
                     this->tasks[i].pop();
@@ -36,7 +36,7 @@ ThreadPool::ThreadPool(size_t threads) : size(threads), stop(false) {
 
 // add new work item to the pool
 bool ThreadPool::enqueue(std::function<void()> &&task, int idx) {
-    std::unique_lock<std::mutex> lock(*queue_mutex[idx]);
+    std::unique_lock<std::mutex> guard(*queue_mutex[idx]);
     tasks[idx].emplace(task);
     condition[idx]->notify_one();
     return true;

@@ -96,9 +96,22 @@ network/CMakeFiles/network.dir/channel.cc.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/network.dir/channel.cc.s"
 	cd /mnt/e/github/EventServer/network && clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /mnt/e/github/EventServer/network/channel.cc -o CMakeFiles/network.dir/channel.cc.s
 
+network/CMakeFiles/network.dir/poller.cc.o: network/CMakeFiles/network.dir/flags.make
+network/CMakeFiles/network.dir/poller.cc.o: network/poller.cc
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/mnt/e/github/EventServer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object network/CMakeFiles/network.dir/poller.cc.o"
+	cd /mnt/e/github/EventServer/network && clang++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/network.dir/poller.cc.o -c /mnt/e/github/EventServer/network/poller.cc
+
+network/CMakeFiles/network.dir/poller.cc.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/network.dir/poller.cc.i"
+	cd /mnt/e/github/EventServer/network && clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /mnt/e/github/EventServer/network/poller.cc > CMakeFiles/network.dir/poller.cc.i
+
+network/CMakeFiles/network.dir/poller.cc.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/network.dir/poller.cc.s"
+	cd /mnt/e/github/EventServer/network && clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /mnt/e/github/EventServer/network/poller.cc -o CMakeFiles/network.dir/poller.cc.s
+
 network/CMakeFiles/network.dir/socket_holder.cc.o: network/CMakeFiles/network.dir/flags.make
 network/CMakeFiles/network.dir/socket_holder.cc.o: network/socket_holder.cc
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/mnt/e/github/EventServer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object network/CMakeFiles/network.dir/socket_holder.cc.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/mnt/e/github/EventServer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object network/CMakeFiles/network.dir/socket_holder.cc.o"
 	cd /mnt/e/github/EventServer/network && clang++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/network.dir/socket_holder.cc.o -c /mnt/e/github/EventServer/network/socket_holder.cc
 
 network/CMakeFiles/network.dir/socket_holder.cc.i: cmake_force
@@ -111,7 +124,7 @@ network/CMakeFiles/network.dir/socket_holder.cc.s: cmake_force
 
 network/CMakeFiles/network.dir/thread_pools.cc.o: network/CMakeFiles/network.dir/flags.make
 network/CMakeFiles/network.dir/thread_pools.cc.o: network/thread_pools.cc
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/mnt/e/github/EventServer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object network/CMakeFiles/network.dir/thread_pools.cc.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/mnt/e/github/EventServer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object network/CMakeFiles/network.dir/thread_pools.cc.o"
 	cd /mnt/e/github/EventServer/network && clang++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/network.dir/thread_pools.cc.o -c /mnt/e/github/EventServer/network/thread_pools.cc
 
 network/CMakeFiles/network.dir/thread_pools.cc.i: cmake_force
@@ -127,6 +140,7 @@ network_OBJECTS = \
 "CMakeFiles/network.dir/acceptor.cc.o" \
 "CMakeFiles/network.dir/buffer.cc.o" \
 "CMakeFiles/network.dir/channel.cc.o" \
+"CMakeFiles/network.dir/poller.cc.o" \
 "CMakeFiles/network.dir/socket_holder.cc.o" \
 "CMakeFiles/network.dir/thread_pools.cc.o"
 
@@ -136,11 +150,12 @@ network_EXTERNAL_OBJECTS =
 lib/libnetwork.a: network/CMakeFiles/network.dir/acceptor.cc.o
 lib/libnetwork.a: network/CMakeFiles/network.dir/buffer.cc.o
 lib/libnetwork.a: network/CMakeFiles/network.dir/channel.cc.o
+lib/libnetwork.a: network/CMakeFiles/network.dir/poller.cc.o
 lib/libnetwork.a: network/CMakeFiles/network.dir/socket_holder.cc.o
 lib/libnetwork.a: network/CMakeFiles/network.dir/thread_pools.cc.o
 lib/libnetwork.a: network/CMakeFiles/network.dir/build.make
 lib/libnetwork.a: network/CMakeFiles/network.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/mnt/e/github/EventServer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Linking CXX static library ../lib/libnetwork.a"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/mnt/e/github/EventServer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Linking CXX static library ../lib/libnetwork.a"
 	cd /mnt/e/github/EventServer/network && $(CMAKE_COMMAND) -P CMakeFiles/network.dir/cmake_clean_target.cmake
 	cd /mnt/e/github/EventServer/network && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/network.dir/link.txt --verbose=$(VERBOSE)
 

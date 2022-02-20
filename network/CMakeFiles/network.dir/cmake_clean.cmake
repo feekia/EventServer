@@ -4,6 +4,7 @@ file(REMOVE_RECURSE
   "CMakeFiles/network.dir/acceptor.cc.o"
   "CMakeFiles/network.dir/buffer.cc.o"
   "CMakeFiles/network.dir/channel.cc.o"
+  "CMakeFiles/network.dir/poller.cc.o"
   "CMakeFiles/network.dir/socket_holder.cc.o"
   "CMakeFiles/network.dir/thread_pools.cc.o"
 )

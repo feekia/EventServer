@@ -21,6 +21,12 @@ network/CMakeFiles/network.dir/channel.cc.o: network/thread_pools.h
 network/CMakeFiles/network.dir/channel.cc.o: utils/event_raii.h
 network/CMakeFiles/network.dir/channel.cc.o: utils/wrapper.h
 
+network/CMakeFiles/network.dir/poller.cc.o: network/buffer.h
+network/CMakeFiles/network.dir/poller.cc.o: network/channel.h
+network/CMakeFiles/network.dir/poller.cc.o: network/poller.cc
+network/CMakeFiles/network.dir/poller.cc.o: network/poller.h
+network/CMakeFiles/network.dir/poller.cc.o: utils/event_raii.h
+
 network/CMakeFiles/network.dir/socket_holder.cc.o: network/buffer.h
 network/CMakeFiles/network.dir/socket_holder.cc.o: network/channel.h
 network/CMakeFiles/network.dir/socket_holder.cc.o: network/socket_holder.cc
