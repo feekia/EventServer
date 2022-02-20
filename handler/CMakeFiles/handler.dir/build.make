@@ -57,18 +57,18 @@ include handler/CMakeFiles/handler.dir/progress.make
 # Include the compile flags for this target's objects.
 include handler/CMakeFiles/handler.dir/flags.make
 
-handler/CMakeFiles/handler.dir/Handler.cc.o: handler/CMakeFiles/handler.dir/flags.make
-handler/CMakeFiles/handler.dir/Handler.cc.o: handler/Handler.cc
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/mnt/e/github/EventServer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object handler/CMakeFiles/handler.dir/Handler.cc.o"
-	cd /mnt/e/github/EventServer/handler && clang++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/handler.dir/Handler.cc.o -c /mnt/e/github/EventServer/handler/Handler.cc
+handler/CMakeFiles/handler.dir/handler.cc.o: handler/CMakeFiles/handler.dir/flags.make
+handler/CMakeFiles/handler.dir/handler.cc.o: handler/handler.cc
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/mnt/e/github/EventServer/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object handler/CMakeFiles/handler.dir/handler.cc.o"
+	cd /mnt/e/github/EventServer/handler && clang++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/handler.dir/handler.cc.o -c /mnt/e/github/EventServer/handler/handler.cc
 
-handler/CMakeFiles/handler.dir/Handler.cc.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/handler.dir/Handler.cc.i"
-	cd /mnt/e/github/EventServer/handler && clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /mnt/e/github/EventServer/handler/Handler.cc > CMakeFiles/handler.dir/Handler.cc.i
+handler/CMakeFiles/handler.dir/handler.cc.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/handler.dir/handler.cc.i"
+	cd /mnt/e/github/EventServer/handler && clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /mnt/e/github/EventServer/handler/handler.cc > CMakeFiles/handler.dir/handler.cc.i
 
-handler/CMakeFiles/handler.dir/Handler.cc.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/handler.dir/Handler.cc.s"
-	cd /mnt/e/github/EventServer/handler && clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /mnt/e/github/EventServer/handler/Handler.cc -o CMakeFiles/handler.dir/Handler.cc.s
+handler/CMakeFiles/handler.dir/handler.cc.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/handler.dir/handler.cc.s"
+	cd /mnt/e/github/EventServer/handler && clang++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /mnt/e/github/EventServer/handler/handler.cc -o CMakeFiles/handler.dir/handler.cc.s
 
 handler/CMakeFiles/handler.dir/message.cc.o: handler/CMakeFiles/handler.dir/flags.make
 handler/CMakeFiles/handler.dir/message.cc.o: handler/message.cc
@@ -85,13 +85,13 @@ handler/CMakeFiles/handler.dir/message.cc.s: cmake_force
 
 # Object files for target handler
 handler_OBJECTS = \
-"CMakeFiles/handler.dir/Handler.cc.o" \
+"CMakeFiles/handler.dir/handler.cc.o" \
 "CMakeFiles/handler.dir/message.cc.o"
 
 # External object files for target handler
 handler_EXTERNAL_OBJECTS =
 
-lib/libhandler.a: handler/CMakeFiles/handler.dir/Handler.cc.o
+lib/libhandler.a: handler/CMakeFiles/handler.dir/handler.cc.o
 lib/libhandler.a: handler/CMakeFiles/handler.dir/message.cc.o
 lib/libhandler.a: handler/CMakeFiles/handler.dir/build.make
 lib/libhandler.a: handler/CMakeFiles/handler.dir/link.txt

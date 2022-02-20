@@ -1,7 +1,7 @@
 file(REMOVE_RECURSE
   "../lib/libhandler.a"
   "../lib/libhandler.pdb"
-  "CMakeFiles/handler.dir/Handler.cc.o"
+  "CMakeFiles/handler.dir/handler.cc.o"
   "CMakeFiles/handler.dir/message.cc.o"
 )
 

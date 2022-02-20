@@ -1,2 +1,2 @@
-/usr/bin/ar qc ../lib/libhandler.a  CMakeFiles/handler.dir/Handler.cc.o CMakeFiles/handler.dir/message.cc.o
+/usr/bin/ar qc ../lib/libhandler.a  CMakeFiles/handler.dir/handler.cc.o CMakeFiles/handler.dir/message.cc.o
 /usr/bin/ranlib ../lib/libhandler.a

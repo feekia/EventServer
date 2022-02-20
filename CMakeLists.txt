@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.6)
 
-project(Event)
+project(ES)
 
 SET(CMAKE_CXX_COMPILER "clang++")         #设置编译器（可选的有gcc，g++）
 

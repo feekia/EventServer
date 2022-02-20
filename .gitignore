@@ -27,7 +27,14 @@ src/test/test
 stamp-h1
 
 CMakeCache.txt
-CMakeFiles/
-lib/
+*/CMakeCache.txt
+
+CMakeFiles
+handler/CMakeFiles/*
+*/CMakeFiles
+
+*/cmake_install.cmake
 cmake_install.cmake
+
+lib/
 bin/

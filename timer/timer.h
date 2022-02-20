@@ -1,16 +1,19 @@
 #ifndef _ES_TIMER_H_
 #define _ES_TIMER_H_
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <functional>
 #include <inttypes.h>
+#include <iostream>
 #include <list>
 #include <math.h>
 #include <mutex>
 #include <string>
 #include <thread>
+
 
 using namespace std;
 
@@ -208,6 +211,17 @@ public:
      * Removes all elements from the priority queue.
      */
     void clear() { queue.clear(); };
+
+    /**
+     * Removes all CANCELED elements from the queue.
+     */
+    void removeCancel() {
+        queue.remove_if([](const TimerTaskPtr &t) {
+            bool ret = t->State() == CANCELLED;
+            if (ret) cout << "Cancel task id : " << t->getTaskId() << " is removed !" << endl;
+            return ret;
+        });
+    };
 };
 
 class Timer {
