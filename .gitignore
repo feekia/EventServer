@@ -15,23 +15,19 @@ depcomp
 missing
 
 Makefile
+*/Makefile
 config.h
 config.log
 config.status
-src/client/EventClient
-src/client/Makefile
-src/server/EventServer
-src/server/Makefile
-src/test/Makefile
-src/test/test
 stamp-h1
 
 CMakeCache.txt
 */CMakeCache.txt
 
 CMakeFiles
-handler/CMakeFiles/*
 */CMakeFiles
+handler/CMakeFiles/*
+network/CMakeFiles/*
 
 */cmake_install.cmake
 cmake_install.cmake

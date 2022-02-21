@@ -8,13 +8,15 @@
 namespace es {
 class Message {
 public:
-    int                           what;
-    int                           m_arg1;
-    int                           m_arg2;
-    typedef std::function<void()> Function;
-    Function                      task;
+    using TimePoint_t      = std::chrono::steady_clock::time_point;
+    using Clock_t          = std::chrono::steady_clock;
+    using MillisDuration_t = std::chrono::milliseconds;
 
-    std::chrono::steady_clock::time_point when;
+    int                   what;
+    int                   m_arg1;
+    int                   m_arg2;
+    std::function<void()> task;
+    TimePoint_t           when;
 
 public:
     Message();
@@ -22,7 +24,10 @@ public:
     Message(int what, long delayMillis);
     virtual ~Message();
 
+    Message(const Message &msg);
+    Message(Message &&msg);
     Message &operator=(const Message &msg);
+    Message &operator=(Message &&msg);
 
     void setWhen(long delayMillis);
 
@@ -37,8 +42,6 @@ public:
     }
 
     bool operator==(int what) const { return (this->what == what); }
-
-private:
 };
 
 } // namespace es

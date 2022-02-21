@@ -22,7 +22,7 @@ class TimerTask;
 class Timer;
 class TaskQueue;
 
-using TimePoint_t      = std::chrono::time_point<std::chrono::steady_clock>;
+using TimePoint_t      = std::chrono::steady_clock::time_point;
 using Clock_t          = std::chrono::steady_clock;
 using MillisDuration_t = std::chrono::milliseconds;
 using TimerTaskPtr     = std::shared_ptr<TimerTask>;
