@@ -28,8 +28,10 @@ int main(int argc, char **argv) {
 
     hdlr.postDelay([]() { cout << "POST call back" << endl; }, 230);
 
-
-    std::this_thread::sleep_until(std::chrono::steady_clock::now() + std::chrono::seconds(12));
+    std::this_thread::sleep_until(std::chrono::steady_clock::now() + std::chrono::seconds(3));
+    hdlr.removeMessages(6);
+    std::this_thread::sleep_until(std::chrono::steady_clock::now() + std::chrono::seconds(1));
+    hdlr.removeAlls();
     // hdlr.stop();
     cout << "Program exit !" << endl;
     return 1;

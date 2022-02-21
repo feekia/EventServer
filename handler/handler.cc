@@ -59,7 +59,6 @@ bool Handler::sendEmptyMessageDelay(int what, long delayMillis) {
 
 bool Handler::post(std::function<void()> &&f) { return postDelay(std::move(f), 0); }
 bool Handler::postDelay(std::function<void()> &&f, long delayMillis) {
-
     if (f == nullptr || delayMillis < 0) {
         return false;
     }
@@ -76,12 +75,12 @@ void Handler::removeMessages(int what) {
     if (what < 0) return;
 
     std::unique_lock<std::mutex> lock(queue_mutex);
-    msg_list.remove_if([what](const Message &m) { return m.what == what; });
+    if (!msg_list.empty()) msg_list.remove_if([what](const Message &m) { return m.what == what; });
 }
 
 void Handler::removeAlls() {
     std::unique_lock<std::mutex> lock(queue_mutex);
-    msg_list.clear();
+    if (!msg_list.empty()) msg_list.clear();
 }
 
 void Handler::stop() {
