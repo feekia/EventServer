@@ -16,9 +16,9 @@ void Message::setWhen(long delayMillis) { when = Clock_t::now() + MillisDuration
 void Message::onRun(std::function<void()> &&f) { this->task = f; }
 Message::~Message() {}
 
-Message::Message(const Message &msg) : what(msg.what), when(msg.when), task(msg.task) {}
+Message::Message(const Message &msg) : what(msg.what), task(msg.task), when(msg.when) {}
 
-Message::Message(Message &&msg) : what(msg.what), when(msg.when), task(msg.task) {}
+Message::Message(Message &&msg) : what(msg.what), task(msg.task), when(msg.when) {}
 
 Message &Message::operator=(const Message &msg) {
     this->what = msg.what;
