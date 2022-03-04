@@ -27,5 +27,4 @@ INCLUDE_DIRECTORIES( ${PROJECT_SOURCE_DIR}/include)
 
 add_subdirectory(handler)
 add_subdirectory(network)
-add_subdirectory(timer)
 add_subdirectory(examples)

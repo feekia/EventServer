@@ -14,7 +14,6 @@
 #include <string>
 #include <thread>
 
-
 using namespace std;
 
 namespace es {
@@ -130,7 +129,7 @@ public:
     }
 
     friend bool operator==(const TimerTask &t1, const TimerTask &t2) {
-        if (t1.nextExecutionTime == t2.nextExecutionTime) return true;
+        if (t1.task_id == t2.task_id) return true;
 
         return false;
     }
@@ -235,7 +234,7 @@ private:
 
 public:
     ~Timer();
-    Timer();
+    Timer() : queue(new TaskQueue), newTasksMayBeScheduled(true) {}
 
     template <typename T = TimerTaskPtr>
     void schedule(T &&task, int64_t delay) {
@@ -273,6 +272,82 @@ private:
         notify();
     }
 };
+
+Timer::~Timer() {
+    finalize();
+    worker_.join();
+    queue      = nullptr;
+}
+
+void Timer::finalize() {
+    lock_guard<mutex> guard(lock);
+    newTasksMayBeScheduled = false;
+    queue->clear();
+    notify();
+}
+
+void Timer::cancel() {
+    lock_guard<mutex> guard(lock);
+    newTasksMayBeScheduled = false;
+    queue->clear();
+    notify(); // In case queue was already empty.
+}
+
+void Timer::Start() {
+    worker_ = thread([this]() { mainLoop(); });
+}
+
+/**
+ * The main timer loop.  (See class comment.)
+ */
+void Timer::mainLoop() {
+    while (true) {
+        TimerTaskPtr task;
+        bool         taskFired = false;
+        {
+            unique_lock<mutex> lk(lock);
+            // Wait for queue to become non-empty
+            while (queue->isEmpty() && newTasksMayBeScheduled) {
+                condition.wait(lk, [this] { return !this->queue->isEmpty() || !newTasksMayBeScheduled; });
+            }
+
+            if (!newTasksMayBeScheduled) break;
+
+            queue->removeCancel(); // Remove all CANCELED task
+            if (queue->isEmpty()) continue;
+
+            // Queue nonempty; look at first evt and do the right thing
+            MillisDuration_t waitFor;
+            task = queue->getFront();
+            {
+                TimePoint_t currentTime = Clock_t::now();
+                waitFor                 = std::chrono::duration_cast<MillisDuration_t>(task->schedTime() - currentTime);
+                if (task->schedTime() <= currentTime) {
+                    taskFired = true;
+                    if (task->repeatPeriod() == MillisDuration_t(0)) { // Non-repeating, remove
+                        queue->removeFront();
+                        task->setState(EXECUTED);
+                        cout << "Executed task id : " << task->getTaskId() << endl;
+                    } else { // Repeating task, reschedule
+                        task->reload();
+                        queue->sort();
+                    }
+                }
+            }
+
+            if (!taskFired && waitFor > MillisDuration_t(0)) { // Task hasn't yet fired; wait
+                condition.wait_for(lk, waitFor);
+            }
+        }
+        if (taskFired) // Task fired; run it, holding no locks
+            task->run();
+    }
+    {
+        lock_guard<mutex> guard(this->lock);
+        this->newTasksMayBeScheduled = false;
+        this->queue->clear(); // Eliminate obsolete references
+    }
+}
 
 } // namespace es
 

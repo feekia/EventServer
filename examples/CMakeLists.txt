@@ -6,9 +6,11 @@ set(EXAMPLES_LIST
 	test_stream
 	handler_tutorial
 	timer_tutorial
+	spdlog_tutorial
+	gtest_tutorial
 )
 
-set(ES_LIB network handler timer event event_pthreads event_core pthread ${LIBRT})
+set(ES_LIB network handler event event_pthreads event_core gtest pthread ${LIBRT})
 
 foreach(src ${EXAMPLES_LIST})
 	string(REPLACE "-" ";" arr ${src})
