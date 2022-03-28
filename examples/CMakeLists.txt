@@ -1,8 +1,6 @@
 link_directories(${LIBRARY_OUTPUT_PATH})
 
 set(EXAMPLES_LIST
-	client
-	server
 	test_stream
 	handler_tutorial
 	timer_tutorial
@@ -10,7 +8,7 @@ set(EXAMPLES_LIST
 	gtest_tutorial
 )
 
-set(ES_LIB network handler event event_pthreads event_core gtest pthread ${LIBRT})
+set(ES_LIB es gtest pthread ${LIBRT})
 
 foreach(src ${EXAMPLES_LIST})
 	string(REPLACE "-" ";" arr ${src})
