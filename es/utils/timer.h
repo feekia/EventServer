@@ -1,6 +1,7 @@
 #pragma once
 
 #include "logging.h"
+#include "sp_util.h"
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -15,12 +16,12 @@
 #include <string>
 #include <thread>
 
+
 using namespace std;
 
 namespace es {
 class Timer;
 class TimerTask;
-struct TimerTaskCompare;
 
 using TimerPtr         = std::shared_ptr<Timer>;
 using TimePoint_t      = std::chrono::steady_clock::time_point;
@@ -28,7 +29,7 @@ using Clock_t          = std::chrono::steady_clock;
 using MillisDuration_t = std::chrono::milliseconds;
 using TimerTaskPtr     = std::shared_ptr<TimerTask>;
 
-using TimerQueue = priority_queue<TimerTaskPtr, deque<TimerTaskPtr>, TimerTaskCompare>;
+using TimerTaskQueue = priority_queue<TimerTaskPtr, deque<TimerTaskPtr>, SpGreater<TimerTaskPtr>>;
 
 enum {
     VIRGIN = 0,
@@ -157,13 +158,9 @@ public:
     const string &taskName() { return name; }
 };
 
-struct TimerTaskCompare {
-    bool operator()(const TimerTaskPtr &a, const TimerTaskPtr &b) { return *a > *b; }
-};
-
 class Timer {
 private:
-    TimerQueue              queue;
+    TimerTaskQueue          queue;
     bool                    newTasksMayBeScheduled;
     std::mutex              lock;
     std::thread             worker_;

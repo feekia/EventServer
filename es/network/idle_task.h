@@ -1,6 +1,7 @@
 #pragma once
 
 #include "logging.h"
+#include "sp_util.h"
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -18,16 +19,13 @@
 using namespace std;
 
 namespace es {
-
-struct IdleTaskPtrCompare;
 class IdleTask;
-
 using TimePoint_t      = std::chrono::steady_clock::time_point;
 using Clock_t          = std::chrono::steady_clock;
 using MillisDuration_t = std::chrono::milliseconds;
 using IdleTaskPtr      = std::shared_ptr<IdleTask>;
 
-using IdleTaskPtrQueue = priority_queue<IdleTaskPtr, deque<IdleTaskPtr>, IdleTaskPtrCompare>;
+using IdleTaskQueue = priority_queue<IdleTaskPtr, deque<IdleTaskPtr>, SpGreater<IdleTaskPtr>>;
 
 class IdleTask {
 private:
@@ -76,7 +74,10 @@ public:
         return *this;
     }
 
-    ~IdleTask() {}
+    ~IdleTask() {
+        run_      = nullptr;
+        canceled_ = true;
+    }
 
     void onRun(function<void(IdleTaskPtr &t)> &&callback) { run_ = std::move(callback); }
     void run(IdleTaskPtr &t) {
@@ -119,10 +120,6 @@ public:
 
     int64_t repeatPeriod() const { return period_; }
     void    setRepeatPeriod(int64_t pMs) { period_ = pMs; }
-};
-
-struct IdleTaskPtrCompare {
-    bool operator()(const IdleTaskPtr &a, const IdleTaskPtr &b) { return *a > *b; }
 };
 
 } // namespace es

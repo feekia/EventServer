@@ -13,18 +13,17 @@
 #include <queue>
 #include <unistd.h>
 
-
 namespace es {
 using IOTask = std::function<void()>;
 class IoOps {
 private:
-    int              wakerFds_[2];
-    int64_t          nextTimeoutMs_;
-    list<IOTask>     tasks_;
-    mutex            mtx;
-    EventLoop *      loop_;
-    MultiPlexer *    plexer_;
-    IdleTaskPtrQueue idleTaskQueue;
+    int           wakerFds_[2];
+    int64_t       nextTimeoutMs_;
+    list<IOTask>  tasks_;
+    mutex         mtx;
+    EventLoop *   loop_;
+    MultiPlexer * plexer_;
+    IdleTaskQueue idleTaskQueue;
 
 public:
     IoOps(EventLoop *loop) : nextTimeoutMs_(1 << 30), loop_(loop), plexer_(new MultiPlexer) {
@@ -63,6 +62,9 @@ public:
         if (wakerFds_[1] >= 0) {
             ::close(wakerFds_[1]);
             wakerFds_[1] = -1;
+        }
+        while (!idleTaskQueue.empty()) {
+            idleTaskQueue.pop();
         }
         if (plexer_ != nullptr) {
             delete plexer_;

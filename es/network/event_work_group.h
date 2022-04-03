@@ -17,7 +17,7 @@ public:
     EventWorkGroup(int size) : size_(size), id_(0), workers_(size), loops_(size) {}
     ~EventWorkGroup() {}
 
-    vector<EventLoop> *getLoops() { return &workers_; }
+    vector<EventLoop> *getLoops() { return &loops_; }
 
     EventLoop *getLoop() { return &loops_[id_++ % loops_.size()]; }
 
@@ -35,8 +35,8 @@ public:
         }
     }
     void exit() {
-        for (auto &worker : workers_) {
-            worker.exit();
+        for (auto &loop : loops_) {
+            loop.exit(true);
         }
     }
 };
