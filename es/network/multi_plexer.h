@@ -1,6 +1,5 @@
 #pragma once
 
-#include "channel.h"
 #include "event_loop.h"
 #include <assert.h>
 #include <atomic>
@@ -14,11 +13,12 @@
 using namespace std;
 
 namespace es {
-class Channel;
 constexpr int kMaxEvents  = 2000;
 constexpr int kReadEvent  = EPOLLIN;
 constexpr int kWriteEvent = EPOLLOUT;
 constexpr int kErrorEvent = EPOLLERR;
+
+class Channel;
 class MultiPlexer {
 public:
     MultiPlexer();

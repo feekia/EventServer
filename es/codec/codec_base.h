@@ -8,14 +8,14 @@ class CodecBase {
 private:
     /* data */
 public:
-    CodeBase(/* args */);
-    ~CodeBase();
+    CodecBase(/* args */);
+    ~CodecBase();
 
-    virtual void decode(const TcpConnectionPtr &con, void *c);
-    virtual void encode(const TcpConnectionPtr &con, void *c, list<Buffer> *out) {}
+    virtual int decode(const TcpConnectionPtr &con, void *c);
+    virtual int encode(const TcpConnectionPtr &con, void *c, list<Buffer> *out) {}
 };
 
-CodeBase::CodeBase(/* args */) {}
+CodecBase::CodecBase(/* args */) {}
 
-CodeBase::~CodeBase() {}
+CodecBase::~CodecBase() {}
 } // namespace es

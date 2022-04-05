@@ -1,18 +1,20 @@
 #pragma once
+#include <chrono>
 #include <mutex>
 namespace es {
 class RealLock {
+    using MS = std::chrono::milliseconds;
+
 private:
     /* data */
-    std::mutex                   mtx;
-    std::unique_lock<std::mutex> lk;
+    std::timed_mutex mtx;
 
 public:
-    RealLock(/* args */) { lk = {mtx, std::defer_lock}; }
+    RealLock(/* args */) {}
     ~RealLock() {}
-    bool try_lock(){return lk.try_lock();}
-    void lock() { lk.lock(); }
-    void unlock() { lk.unlock(); }
+    bool try_lock(int timeoutms) { return mtx.try_lock_for(MS(timeoutms)); }
+    void lock() { mtx.lock(); }
+    void unlock() { mtx.unlock(); }
 };
 
 } // namespace es

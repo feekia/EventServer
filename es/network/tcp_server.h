@@ -19,46 +19,49 @@ using TcpCreateCallBack = std::function<void(const TcpConnectionPtr &)>;
 
 class TcpServer {
 private:
-    TcpCreateCallBack    newConnectionCb_;
-    TcpCallBack          readcb_;
-    TcpCallBack          statecb_;
-    AcceptMultiPlexerPtr acceptPlexer_;
-    AcceptHandler *      acceptHandler_;
-    int                  listenFd_;
+    TcpCreateCallBack    new_connection_cb_;
+    AcceptMultiPlexerPtr accept_plexer_;
+    AcceptHandler *      accept_handler_;
+    int                  listen_fd_;
     vector<IoOps *>      io_ops_;
-    int                  size;
+    int                  size_;
 
 private:
     IoOps *getOps() {
         static std::atomic<int64_t> id(0);
-        return io_ops_[id++ % size];
+        return io_ops_[id++ % size_];
     }
 
 public:
-    TcpServer(EventWorkGroup *b, EventWorkGroup *w)
-        : acceptPlexer_(new AcceptMultiPlexer(b->getLoops())), io_ops_(w->size()), size(w->size()) {
-        for (int i = 0; i < size; i++) {
-            io_ops_[i] = new IoOps(w->getLoop());
+    TcpServer(EventWorkGroup *b, EventWorkGroup *w, TcpCreateCallBack &&create_cb)
+        : new_connection_cb_(std::move(create_cb)), accept_plexer_(new AcceptMultiPlexer(b->getLoops())),
+          io_ops_(w->size()), size_(w->size()) {
+        for (int i = 0; i < size_; i++) {
+            io_ops_[i] = new IoOps(w->getLoop(i));
         }
     }
     ~TcpServer() {
-        if (acceptHandler_) {
-            delete acceptHandler_;
-            acceptHandler_ = nullptr;
+        if (accept_handler_) {
+            delete accept_handler_;
+            accept_handler_ = nullptr;
         }
-        for (int i = 0; i < size; i++) {
+        for (int i = 0; i < size_; i++) {
             delete io_ops_[i];
             io_ops_[i] = nullptr;
         }
     }
 
-    void onNewConnection(TcpCreateCallBack &&cb) { newConnectionCb_ = std::move(cb); }
-    void onConnectionRead(TcpCallBack &&cb) { readcb_ = std::move(cb); }
-    void onConnectionChange(TcpCallBack &&cb) { statecb_ = std::move(cb); }
-
     int bind(const std::string &host, unsigned short port, bool reusePort);
 
-    static TcpServerPtr startServer(EventWorkGroup *b, EventWorkGroup *w, const std::string &host, unsigned short port,
-                                    bool reusePort);
+    static TcpServerPtr startServer(EventWorkGroup *b, EventWorkGroup *w, TcpCreateCallBack &&create_cb,
+                                     const std::string &host, unsigned short port, bool reusePort) {
+        TcpServerPtr p(new TcpServer(b, w, std::move(create_cb)));
+
+        int r = p->bind(host, port, reusePort);
+        if (r) {
+            spdlog::error("bind to {}:{} failed {} {}", host.c_str(), port, errno, strerror(errno));
+        }
+        return r == 0 ? p : NULL;
+    }
 };
 } // namespace es

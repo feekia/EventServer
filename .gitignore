@@ -6,3 +6,5 @@ core
 CMakeCache.txt
 CMakeFiles
 cmake_install.cmake
+bin/*
+lib/*

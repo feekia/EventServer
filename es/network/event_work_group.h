@@ -21,6 +21,8 @@ public:
 
     EventLoop *getLoop() { return &loops_[id_++ % loops_.size()]; }
 
+    EventLoop *getLoop(int index) { return &loops_[index]; }
+
     void loop() {
         for (int i = 0; i < size_; i++) {
             workers_[i] = thread([this, i] { loops_[i].loop(); });

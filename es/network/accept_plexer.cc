@@ -25,7 +25,7 @@ AcceptMultiPlexer::AcceptMultiPlexer(vector<EventLoop> *loops) : loops_(loops) {
             }
         });
     } else {
-        for (int i = 0; loops_->size(); i++) {
+        for (int i = 0; i < loops_->size(); i++) {
             loops_->at(i).onWork([=](int64_t waitMs) {
                 int cfd = -1;
                 cfd     = this->waitTimeoutWithLock(waitMs);

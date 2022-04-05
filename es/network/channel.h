@@ -41,8 +41,8 @@ public:
     void enableRead(bool enable);
     void enableWrite(bool enable);
     void enableReadWrite(bool readable, bool writable);
-    bool readEnabled();
-    bool writeEnabled();
+    bool readEnabled() { return events_ & kReadEvent; }
+    bool writeEnabled() { return events_ & kWriteEvent; }
 
     //处理读写事件
     void handleRead() { readcb_(); }

@@ -1,11 +1,11 @@
 #include "tcp_server.h"
+#include "logging.h"
 #include <netdb.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
-
 
 using namespace std;
 namespace es {
@@ -31,42 +31,34 @@ int TcpServer::bind(const std::string &host, unsigned short port, bool reusePort
         return errno;
     }
 
-    listenFd_ = socket(AF_INET, SOCK_STREAM, 0);
-    r         = setAddrReuse(listenFd_);
+    listen_fd_ = socket(AF_INET, SOCK_STREAM, 0);
+    r          = setAddrReuse(listen_fd_);
     assert(r == 0);
-    r = addFlag(listenFd_, FD_CLOEXEC);
+    r = addFlag(listen_fd_, FD_CLOEXEC);
     assert(r == 0);
-    r = ::bind(listenFd_, (struct sockaddr *)&addr_, sizeof(struct sockaddr));
+    r = ::bind(listen_fd_, (struct sockaddr *)&addr_, sizeof(struct sockaddr));
     if (r) {
-        ::close(listenFd_);
+        ::close(listen_fd_);
         spdlog::error("bind to {} failed {} {}", "address", errno, strerror(errno));
-        listenFd_ = -1;
+        listen_fd_ = -1;
         return errno;
     }
-    r = listen(listenFd_, 60);
-    assert(r == 0);
-    spdlog::info("fd {} listening at {}", listenFd_, "address");
 
-    acceptHandler_ = new AcceptHandler(listenFd_);
-    acceptHandler_->onAccept([this](int cfd) {
+    accept_handler_ = new AcceptHandler(listen_fd_);
+    accept_handler_->onAccept([this](int cfd) {
         TcpConnectionPtr tcp(new TcpConnection);
         IoOps *          ops = getOps();
-        tcp->attachIoOps(ops, cfd);
-        newConnectionCb_(tcp);
+        tcp->setFd(cfd);
+        new_connection_cb_(tcp);
+        ops->sendAndWakeup([=]() { tcp->attachIoOps(ops); });
     });
-    r = acceptPlexer_->addAccept(acceptHandler_);
+    r = accept_plexer_->addAccept(accept_handler_);
     assert(r == 0);
 
+    r = listen(listen_fd_, 60);
+    assert(r == 0);
+    spdlog::info("fd {} listening at {}", listen_fd_, "address");
     return 0;
 }
 
-TcpServerPtr TcpServer::startServer(EventWorkGroup *b, EventWorkGroup *w, const std::string &host, unsigned short port,
-                                    bool reusePort) {
-    TcpServerPtr p(new TcpServer(b, w));
-    int          r = p->bind(host, port, reusePort);
-    if (r) {
-        spdlog::error("bind to {}:{} failed {} {}", host.c_str(), port, errno, strerror(errno));
-    }
-    return r == 0 ? p : NULL;
-}
 } // namespace es

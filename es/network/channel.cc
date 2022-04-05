@@ -50,6 +50,8 @@ void Channel::enableReadWrite(bool readable, bool writable) {
 void Channel::close() {
     plexer_->remove(this);
     ::close(fd_);
-    fd_ = -1;
+    fd_      = -1;
+    readcb_  = nullptr;
+    writecb_ = nullptr;
 }
 } // namespace es

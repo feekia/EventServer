@@ -4,24 +4,6 @@
 #include "logging.h"
 
 namespace es {
-void TcpConnection::cleanup(const TcpConnectionPtr &con) {
-    if (readcb_ && input_.size()) {
-        readcb_(con);
-    }
-
-    if (statecb_) {
-        statecb_(con);
-    }
-
-    // channel may have hold TcpConnPtr, set channel_ to NULL before delete
-    readcb_ = writablecb_ = statecb_ = freecb_ = nullptr;
-    if (idleTask != nullptr) idleTask->cancel();
-    idleTask    = nullptr;
-    Channel *ch = chan_;
-    chan_       = NULL;
-    delete ch;
-}
-
 void TcpConnection::handleRead(const TcpConnectionPtr &con) {
     while (true) {
         input_.makeRoom();
@@ -115,10 +97,10 @@ void TcpConnection::send(const char *buf, size_t len) {
         spdlog::warn("connection closed, but still writing {} bytes", len);
     }
 }
-void TcpConnection::attachIoOps(IoOps *ops, int fd) {
-    assert(fd >= 0);
-    fd_                     = fd;
-    chan_                   = new Channel(ops->getPlexer(), fd_, kWriteEvent | kReadEvent);
+void TcpConnection::attachIoOps(IoOps *ops) {
+    ops_  = ops;
+    chan_ = new Channel(ops->getPlexer(), fd_, kWriteEvent | kReadEvent);
+
     TcpConnectionPtr tcpcon = shared_from_this();
     chan_->onRead([=] { tcpcon->handleRead(tcpcon); });
     chan_->onWrite([=] { tcpcon->handleWrite(tcpcon); });
@@ -127,12 +109,38 @@ void TcpConnection::attachIoOps(IoOps *ops, int fd) {
         string       n;
         ss << "con:{" << fd_ << "}";
         ss >> n;
-        idleTask = make_shared<IdleTask>(std::move(n));
-        idleTask->setSchedDelay(freeTimeoutMs_);
-        idleTask->setRepeatPeriod(freeTimeoutMs_);
-        idleTask->onRun([=](IdleTaskPtr &t) { tcpcon->handleFreeTimeOut(tcpcon); });
-        ops->addIdleTask(idleTask);
+        idle_task_ = make_shared<IdleTask>(std::move(n));
+        idle_task_->setSchedDelay(free_timeout_ms_);
+        idle_task_->setRepeatPeriod(free_timeout_ms_);
+        idle_task_->onRun([=](IdleTaskPtr &t) { tcpcon->handleFreeTimeOut(tcpcon); });
+        ops->addIdleTask(idle_task_);
     }
 }
 
+void TcpConnection::cleanup(const TcpConnectionPtr &con) {
+    if (readcb_ && input_.size()) {
+        readcb_(con);
+    }
+
+    if (statecb_) {
+        statecb_(con);
+    }
+
+    // channel may have hold TcpConnPtr, set channel_ to NULL before delete
+    readcb_ = writablecb_ = statecb_ = freecb_ = nullptr;
+    if (idle_task_ != nullptr) idle_task_->cancel();
+    idle_task_  = nullptr;
+    Channel *ch = chan_;
+    chan_       = NULL;
+    delete ch;
+}
+
+void TcpConnection::close() {
+    TcpConnectionPtr con = shared_from_this();
+    ops_->sendAndWakeup([con](){
+        if(con->chan()!=nullptr){
+            con->chan()->close();
+        }
+    });
+}
 } // namespace es

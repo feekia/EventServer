@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <atomic>
 #include <fcntl.h>
+#include <inttypes.h>
 #include <map>
 #include <netinet/in.h>
 #include <stdlib.h>
@@ -14,7 +15,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <vector>
-#include <inttypes.h>
+
 
 using namespace std;
 namespace es {
@@ -76,7 +77,7 @@ public:
     int waitTimeout(int64_t waitMs);
     int waitTimeoutWithLock(int64_t waitMs) {
         int cfd = -1;
-        if (lk_.try_lock() == true) {
+        if (lk_.try_lock(waitMs) == true) {
             cfd = waitTimeout(waitMs);
             lk_.unlock();
         }

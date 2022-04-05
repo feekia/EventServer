@@ -6,6 +6,7 @@ set(EXAMPLES_LIST
 	timer_tutorial
 	spdlog_tutorial
 	gtest_tutorial
+	server
 )
 
 set(ES_LIB es gtest pthread ${LIBRT})

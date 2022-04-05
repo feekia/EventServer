@@ -3,6 +3,7 @@
 #include "channel.h"
 #include "idle_task.h"
 #include "io_ops.h"
+#include <assert.h>
 
 namespace es {
 class TcpConnection;
@@ -10,22 +11,46 @@ using TcpConnectionPtr = std::shared_ptr<TcpConnection>;
 using TcpCallBack      = std::function<void(const TcpConnectionPtr &)>;
 using MsgCallBack      = std::function<void(const TcpConnectionPtr &, Slice msg)>;
 
+// Tcp连接的个状态
+enum ConnectionState {
+    kInvalid = 0,
+    kHandshaking,
+    kConnected,
+    kClosed,
+    kFailed,
+};
+
 class TcpConnection : public std::enable_shared_from_this<TcpConnection> {
 private:
-    int         fd_;
-    Buffer      input_, output_;
-    Channel *   chan_;
-    TcpCallBack readcb_, writablecb_, statecb_;
-    TcpCallBack freecb_;
-    std::string destHost_, localIp_;
-    int64_t     freeTimeoutMs_;
-    IdleTaskPtr idleTask;
+    int             fd_;
+    Buffer          input_, output_;
+    Channel *       chan_;
+    ConnectionState state_;
+    TcpCallBack     readcb_, writablecb_, statecb_, freecb_;
+    std::string     dest_host_, local_ip_;
+    int64_t         free_timeout_ms_;
+    IdleTaskPtr     idle_task_;
+    IoOps *         ops_;
 
 public:
-    TcpConnection() {}
+    TcpConnection() : fd_(-1), state_(kInvalid) {}
     ~TcpConnection() {}
 
-    void attachIoOps(IoOps *ops, int fd);
+    int fd() { return fd_; }
+
+    void setFd(int fd) {
+        assert(fd >= 0);
+        fd_ = fd;
+    }
+    Channel *       chan() { return chan_; }
+    ConnectionState state() { return state_; }
+
+    void attachIoOps(IoOps *ops);
+
+    // 获取输入输出缓冲区
+    Buffer &getReadBuffer() { return input_; }
+    Buffer &getWriteBuffer() { return output_; }
+
     //发送数据
     void    sendOutput() { send(output_); }
     void    send(Buffer &msg);
@@ -40,14 +65,14 @@ public:
     //当tcp缓冲区可写时回调
     void onWritable(const TcpCallBack &cb) { writablecb_ = cb; }
     // tcp状态改变时回调
-    void onChange(const TcpCallBack &cb) { statecb_ = cb; }
+    void onStateChange(const TcpCallBack &cb) { statecb_ = cb; }
     // tcp空闲超时回调
     void onFreeTimeOut(int64_t timeoutMs, const TcpCallBack &cb) {
         assert(timeoutMs > 0);
         assert(cb != nullptr);
 
-        freecb_        = cb;
-        freeTimeoutMs_ = timeoutMs;
+        freecb_          = cb;
+        free_timeout_ms_ = timeoutMs;
     };
 
     void handleRead(const TcpConnectionPtr &con);
@@ -55,10 +80,11 @@ public:
     void handleFreeTimeOut(const TcpConnectionPtr &con) { con->freecb_(con); }
 
     void updateFreeTimeOut(const TcpConnectionPtr &con) {
-        if (con->idleTask != nullptr) con->idleTask->updateIdleTime();
+        if (con->idle_task_ != nullptr) con->idle_task_->updateIdleTime();
     }
 
     void cleanup(const TcpConnectionPtr &con);
+    void close();
 };
 
 } // namespace es

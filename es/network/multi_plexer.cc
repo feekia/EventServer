@@ -11,6 +11,7 @@
 #include <cstdio>
 
 #include "multi_plexer.h"
+#include "channel.h"
 namespace es {
 
 MultiPlexer::MultiPlexer() : actives_(-1) {
@@ -35,7 +36,7 @@ void MultiPlexer::add(Channel *ch) {
     memset(&ev, 0, sizeof(ev));
     ev.events   = ch->events();
     ev.data.ptr = ch;
-    spdlog::info("adding channel {} fd {} events {} epoll {}", (long long)ch->id(), ch->fd(), ev.events, epollfd_);
+    spdlog::info("adding channel {} fd {} events {} epoll {}", (long long)ch->id(), ch->fd(), ch->events(), epollfd_);
     int r = epoll_ctl(epollfd_, EPOLL_CTL_ADD, ch->fd(), &ev);
     assert(r >= 0);
     chans_.insert(ch);
@@ -66,7 +67,7 @@ void MultiPlexer::remove(Channel *ch) {
 void MultiPlexer::poll(int64_t waitMs) {
     spdlog::stopwatch sw;
     actives_ = epoll_wait(epollfd_, max_events_, kMaxEvents, waitMs);
-    spdlog::info("epoll wait {} return {} errno {} used {} millsecond", waitMs, actives_, errno, sw);
+    spdlog::debug("epoll wait {} return {} errno {} used {} second", waitMs, actives_, errno, sw);
 
     while (--actives_ >= 0) {
         int      i      = actives_;
