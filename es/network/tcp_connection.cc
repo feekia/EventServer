@@ -66,14 +66,14 @@ ssize_t TcpConnection::write(const char *buf, size_t len) {
 void TcpConnection::send(Buffer &buf) {
     if (chan_) {
         if (chan_->writeEnabled()) {
-            output_.absorb(buf);
+            output_.append(buf);
         }
         if (buf.size()) {
             ssize_t sended = write(buf.begin(), buf.size());
             buf.consume(sended);
         }
         if (buf.size()) {
-            output_.absorb(buf);
+            output_.append(buf);
             if (!chan_->writeEnabled()) {
                 chan_->enableWrite(true);
             }

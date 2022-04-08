@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <inttypes.h>
 #include <map>
+#include <memory>
 #include <netinet/in.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,7 +16,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <vector>
-
 
 using namespace std;
 namespace es {
@@ -56,6 +56,7 @@ private:
     AcceptHandler *    acceptor;
     int                epollfd_;
     struct epoll_event activeEvs_;
+    atomic_bool        exit_;
 
 public:
     AcceptMultiPlexer(vector<EventLoop> *loops);
@@ -78,11 +79,12 @@ public:
     int waitTimeoutWithLock(int64_t waitMs) {
         int cfd = -1;
         if (lk_.try_lock(waitMs) == true) {
-            cfd = waitTimeout(waitMs);
+            if (!exit_) cfd = waitTimeout(waitMs);
             lk_.unlock();
         }
         return cfd;
     }
+    void onExit() { exit_ = true; }
 };
 
 } // namespace es

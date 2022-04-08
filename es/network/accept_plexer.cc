@@ -8,7 +8,7 @@
 using namespace std;
 namespace es {
 
-AcceptMultiPlexer::AcceptMultiPlexer(vector<EventLoop> *loops) : loops_(loops) {
+AcceptMultiPlexer::AcceptMultiPlexer(vector<EventLoop> *loops) : loops_(loops), exit_(false) {
 
     assert(loops_->size() >= 1);
     epollfd_ = epoll_create1(EPOLL_CLOEXEC);
@@ -24,8 +24,11 @@ AcceptMultiPlexer::AcceptMultiPlexer(vector<EventLoop> *loops) : loops_(loops) {
                 this->acceptor->handleAccept(cfd);
             }
         });
+
+        loops_->front().onExitNotify([=]() { onExit(); });
     } else {
-        for (int i = 0; i < loops_->size(); i++) {
+        int size = static_cast<int>(loops_->size());
+        for (int i = 0; i < size; i++) {
             loops_->at(i).onWork([=](int64_t waitMs) {
                 int cfd = -1;
                 cfd     = this->waitTimeoutWithLock(waitMs);
@@ -33,6 +36,7 @@ AcceptMultiPlexer::AcceptMultiPlexer(vector<EventLoop> *loops) : loops_(loops) {
                     this->acceptor->handleAccept(cfd);
                 }
             });
+            loops_->at(i).onExitNotify([=]() { onExit(); });
         }
     }
 }
@@ -56,7 +60,7 @@ int AcceptMultiPlexer::waitTimeout(int64_t waitMs) {
             spdlog::debug("Listen fd {} accept connection fd {} !", acceptor->fd(), cfd);
         }
     }
-
+    spdlog::info("Listen exit !");
     return cfd;
 }
 } // namespace es

@@ -9,11 +9,11 @@ namespace es {
 
 class Buffer {
 public:
-    Buffer() : buffer_(NULL), begin_(0), end_(0), capacity_(0), expand_(512) {}
+    Buffer() : buffer_(nullptr), begin_(0), end_(0), capacity_(0), expand_(512) {}
     ~Buffer() { delete[] buffer_; }
     void clear() {
         delete[] buffer_;
-        buffer_   = NULL;
+        buffer_   = nullptr;
         capacity_ = 0;
         begin_ = end_ = 0;
     }
@@ -50,18 +50,24 @@ public:
         if (size() == 0) clear();
         return *this;
     }
-    Buffer &absorb(Buffer &buf);
+    Buffer &append(Buffer &buf);
+    Buffer &append(Buffer &&buf);
     void    setSuggestSize(size_t sz) { expand_ = sz; }
+
     Buffer(const Buffer &b) {
-        memcpy(this, &b, sizeof b);
+        begin_    = b.begin_;
+        end_      = b.end_;
+        capacity_ = b.capacity_;
+        expand_   = b.expand_;
         if (b.buffer_) {
             buffer_ = new char[capacity_];
             memcpy(data(), b.begin(), b.size());
         }
     }
     Buffer &operator=(const Buffer &b) {
+        if (&b == this) return *this;
         delete[] buffer_;
-        buffer_ = NULL;
+        buffer_ = nullptr;
         memcpy(this, &b, sizeof b);
         if (b.buffer_) {
             buffer_ = new char[capacity_];

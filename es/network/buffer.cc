@@ -22,14 +22,26 @@ void Buffer::expand(size_t len) {
     capacity_ = ncap;
 }
 
-Buffer &Buffer::absorb(Buffer &buf) {
+Buffer &Buffer::append(Buffer &buf) {
+    if (&buf != this) {
+        append(buf.begin(), buf.size());
+        buf.clear();
+    }
+    return *this;
+}
+
+Buffer &Buffer::append(Buffer &&buf) {
     if (&buf != this) {
         if (size() == 0) {
-            char b[sizeof buf];
-            memcpy(b, this, sizeof b);
-            memcpy(this, &buf, sizeof b);
-            memcpy(&buf, b, sizeof b);
-            std::swap(expand_, buf.expand_); // keep the origin expand_
+            begin_    = buf.begin_;
+            end_      = buf.end_;
+            capacity_ = buf.capacity_;
+            buffer_   = buf.buffer_;
+            // clear
+            buf.begin_    = 0;
+            buf.end_      = 0;
+            buf.capacity_ = 0;
+            buf.buffer_ = nullptr;
         } else {
             append(buf.begin(), buf.size());
             buf.clear();
@@ -37,5 +49,4 @@ Buffer &Buffer::absorb(Buffer &buf) {
     }
     return *this;
 }
-
 } // namespace es

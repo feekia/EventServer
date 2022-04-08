@@ -26,7 +26,7 @@ public:
         while (!exit_) {
             workTask_(kWaitLoopTimeoutMs);
         }
-        if (exitTask_ != nullptr) {
+        if (cleanupTask_ != nullptr) {
             lock_guard<mutex> lk(mtx);
             cleanupTask_();
             cleanupTask_ = nullptr;
