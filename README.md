@@ -1,37 +1,14 @@
 
-## 代码特性
-1. handler 用于异步消息的处理
-2. threadpool实现
-3. libevent 多线程io
-4. timer 调度实现
 
-## 框架层次设计
-1. payload protocol(json or other) (未开发)
-2. mqtt (未开发)
-3. TLS(准备开发)
-4. 基础长连接网络框架
+## 工程简介
+    此工程致力于打造一个MQTT C++网络库，目前正在设计中，欢迎有经验的朋友指点、讨论。
 
-
-## 读写及缓存设计：（参考buffer.h）
-    接收：自定义读读缓存设计
-    写数据：自定义写缓存设计
-
-## 注意事项
-1. libevent需要 2.1.8以上的版本，否则不支持该宏：EVLOOP_NO_EXIT_ON_EMPTY
-
-    sudo apt install libevent-dev
-
-    sudo apt install cmake
-
-    sudo apt install clang
-
-    sudo apt-get install libgtest-dev
   
 ## 编译
+    sudo apt install cmake
+    sudo apt install clang
     cd build
-
     cmake ..
-
     make
 
 ## clean

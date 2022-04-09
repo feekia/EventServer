@@ -5,11 +5,10 @@ set(EXAMPLES_LIST
 	handler_tutorial
 	timer_tutorial
 	spdlog_tutorial
-	gtest_tutorial
 	server
 )
 
-set(ES_LIB es gtest pthread ${LIBRT})
+set(ES_LIB es pthread ${LIBRT})
 
 foreach(src ${EXAMPLES_LIST})
 	string(REPLACE "-" ";" arr ${src})
