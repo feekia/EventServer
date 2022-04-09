@@ -22,8 +22,8 @@ int main(int argc, char **argv) {
         &boss, &worker,
         [&](const TcpConnectionPtr &con) {
             connectionPools[userid++] = con;
-            con->onStateChange([&](const TcpConnectionPtr &con) {
-                if (con->state() == ConnectionState::kClosed) {
+            con->onState([&](const TcpConnectionPtr &con) {
+                if (con->state() == TcpConnection::TcpState::kClosed) {
                     // clear connectionPools;
                 }
             });

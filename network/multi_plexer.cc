@@ -10,8 +10,9 @@
 #include <chrono>
 #include <cstdio>
 
-#include "multi_plexer.h"
 #include "channel.h"
+#include "multi_plexer.h"
+
 namespace es {
 
 MultiPlexer::MultiPlexer() : actives_(-1) {
@@ -19,16 +20,15 @@ MultiPlexer::MultiPlexer() : actives_(-1) {
     id_      = ++id;
     epollfd_ = epoll_create1(EPOLL_CLOEXEC);
     assert(epollfd_ >= 0);
-    spdlog::info("MultiPlexer {} created", epollfd_);
+    spdlog::info("MultiPlexer created,fd: {}", epollfd_);
 }
 
 MultiPlexer::~MultiPlexer() {
-    spdlog::info("Epoll destroying {}", epollfd_);
     while (chans_.size()) {
         (*chans_.begin())->close();
     }
     ::close(epollfd_);
-    spdlog::info("Epoll {} destroyed", epollfd_);
+    spdlog::info("Epoll destroyed, fd: {}", epollfd_);
 }
 
 void MultiPlexer::add(Channel *ch) {
@@ -36,7 +36,7 @@ void MultiPlexer::add(Channel *ch) {
     memset(&ev, 0, sizeof(ev));
     ev.events   = ch->events();
     ev.data.ptr = ch;
-    spdlog::info("adding channel {} fd {} events {} epoll {}", (long long)ch->id(), ch->fd(), ch->events(), epollfd_);
+    spdlog::info("adding channel fd {} events {} epoll {}", ch->fd(), ch->events(), epollfd_);
     int r = epoll_ctl(epollfd_, EPOLL_CTL_ADD, ch->fd(), &ev);
     assert(r >= 0);
     chans_.insert(ch);

@@ -13,7 +13,7 @@ AcceptMultiPlexer::AcceptMultiPlexer(vector<EventLoop> *loops) : loops_(loops), 
     assert(loops_->size() >= 1);
     epollfd_ = epoll_create1(EPOLL_CLOEXEC);
     assert(epollfd_ >= 0);
-    spdlog::info("AcceptPlexer epoll {} created", epollfd_);
+    spdlog::info("AcceptPlexer epoll created,fd: {}", epollfd_);
 
     if (loops_->size() == 1) {
         loops_->front().onWork([=](int64_t waitMs) {
@@ -33,7 +33,11 @@ AcceptMultiPlexer::AcceptMultiPlexer(vector<EventLoop> *loops) : loops_(loops), 
                 int cfd = -1;
                 cfd     = this->waitTimeoutWithLock(waitMs);
                 if (cfd >= 0) {
-                    this->acceptor->handleAccept(cfd);
+                    if (!exit_) {
+                        this->acceptor->handleAccept(cfd);
+                    } else {
+                        close(cfd);
+                    }
                 }
             });
             loops_->at(i).onExitNotify([=]() { onExit(); });

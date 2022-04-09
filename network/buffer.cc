@@ -41,12 +41,36 @@ Buffer &Buffer::append(Buffer &&buf) {
             buf.begin_    = 0;
             buf.end_      = 0;
             buf.capacity_ = 0;
-            buf.buffer_ = nullptr;
+            buf.buffer_   = nullptr;
         } else {
             append(buf.begin(), buf.size());
             buf.clear();
         }
     }
     return *this;
+}
+
+Buffer::Buffer(const Buffer &b) {
+    begin_    = b.begin_;
+    end_      = b.end_;
+    capacity_ = b.capacity_;
+    expand_   = b.expand_;
+    if (b.buffer_) {
+        buffer_ = new char[capacity_];
+        memcpy(data(), b.begin(), b.size());
+    }
+}
+
+Buffer::Buffer(Buffer &&b) {
+    begin_    = b.begin_;
+    end_      = b.end_;
+    capacity_ = b.capacity_;
+    expand_   = b.expand_;
+    buffer_   = b.buffer_;
+
+    b.begin_    = 0;
+    b.end_      = 0;
+    b.capacity_ = 0;
+    b.buffer_   = nullptr;
 }
 } // namespace es

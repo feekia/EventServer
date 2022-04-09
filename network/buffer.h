@@ -54,16 +54,9 @@ public:
     Buffer &append(Buffer &&buf);
     void    setSuggestSize(size_t sz) { expand_ = sz; }
 
-    Buffer(const Buffer &b) {
-        begin_    = b.begin_;
-        end_      = b.end_;
-        capacity_ = b.capacity_;
-        expand_   = b.expand_;
-        if (b.buffer_) {
-            buffer_ = new char[capacity_];
-            memcpy(data(), b.begin(), b.size());
-        }
-    }
+    Buffer(const Buffer &b);
+    Buffer(Buffer &&b);
+    
     Buffer &operator=(const Buffer &b) {
         if (&b == this) return *this;
         delete[] buffer_;
