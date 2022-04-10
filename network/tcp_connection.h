@@ -7,9 +7,10 @@
 
 namespace es {
 class TcpConnection;
-using TcpConnectionPtr = std::shared_ptr<TcpConnection>;
-using TcpCallBack      = std::function<void(const TcpConnectionPtr &)>;
-using MsgCallBack      = std::function<void(const TcpConnectionPtr &, Slice msg)>;
+using TcpConnectionPtr  = std::shared_ptr<TcpConnection>;
+using TcpCallBack       = std::function<void(const TcpConnectionPtr &)>;
+using MsgCallBack       = std::function<void(const TcpConnectionPtr &, Slice msg)>;
+using TcpCreateCallBack = std::function<void(const TcpConnectionPtr &)>;
 
 class TcpConnection : public std::enable_shared_from_this<TcpConnection> {
 public:
@@ -57,9 +58,7 @@ public:
     void send(const char *buf, size_t len);
 
     void sendByOtherThread(Buffer &&msg) {
-        ops_->sendAndWakeup([&]() {
-            send(msg);
-        });
+        ops_->sendAndWakeup([&]() { send(msg); });
     }
 
     bool writable() { return chan_ ? chan_->writeEnabled() : false; }

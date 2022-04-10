@@ -13,10 +13,6 @@ int main(int argc, char **argv) {
     // 连接列表
     unordered_map<int64_t, TcpConnectionPtr> connectionPools;
 
-    Signal::signal(SIGINT, [&] {
-        boss.exit();
-        worker.exit();
-    });
     spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%^%L%$] [tid %t] %v");
     TcpServerPtr ss = TcpServer::startServer(
         &boss, &worker,
@@ -28,14 +24,14 @@ int main(int argc, char **argv) {
                 }
             });
             con->onFreeTimeOut(40 * 1000, [&](const TcpConnectionPtr &con) { con->close(); });
-            con->onRead([&](const TcpConnectionPtr &con) { con->getReadBuffer(); });
+            con->onRead([&](const TcpConnectionPtr &con) { con->send(con->getReadBuffer()); });
         },
         "127.0.0.1", 9950, true);
     assert(ss != nullptr);
-
-    boss.loop();
-    worker.loop();
-
+    Signal::signal(SIGINT, [&] {
+        boss.exit();
+        worker.exit();
+    });
     boss.sync();
     worker.sync();
 }

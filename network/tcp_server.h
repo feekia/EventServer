@@ -15,7 +15,6 @@
 namespace es {
 class TcpServer;
 using TcpServerPtr      = std::shared_ptr<TcpServer>;
-using TcpCreateCallBack = std::function<void(const TcpConnectionPtr &)>;
 
 class TcpServer {
 private:
@@ -54,14 +53,18 @@ public:
     int bind(const std::string &host, unsigned short port, bool reusePort);
 
     static TcpServerPtr startServer(EventWorkGroup *b, EventWorkGroup *w, TcpCreateCallBack &&create_cb,
-                                     const std::string &host, unsigned short port, bool reusePort) {
+                            const std::string &host, unsigned short port, bool reusePort) {
         TcpServerPtr p(new TcpServer(b, w, std::move(create_cb)));
 
         int r = p->bind(host, port, reusePort);
         if (r) {
             spdlog::error("bind to {}:{} failed {} {}", host.c_str(), port, errno, strerror(errno));
+            return nullptr;
         }
-        return r == 0 ? p : NULL;
+
+        b->loop();
+        w->loop();
+        return r == 0 ? p : nullptr;
     }
 };
 } // namespace es

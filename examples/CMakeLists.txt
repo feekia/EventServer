@@ -6,6 +6,7 @@ set(EXAMPLES_LIST
 	timer_tutorial
 	spdlog_tutorial
 	server
+	client
 )
 
 set(ES_LIB es pthread ${LIBRT})

@@ -64,7 +64,7 @@ int AcceptMultiPlexer::waitTimeout(int64_t waitMs) {
             spdlog::debug("Listen fd {} accept connection fd {} !", acceptor->fd(), cfd);
         }
     }
-    spdlog::info("Listen exit !");
+    // spdlog::info("Listen exit !");
     return cfd;
 }
 } // namespace es
