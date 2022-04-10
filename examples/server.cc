@@ -24,7 +24,10 @@ int main(int argc, char **argv) {
                 }
             });
             con->onFreeTimeOut(40 * 1000, [&](const TcpConnectionPtr &con) { con->close(); });
-            con->onRead([&](const TcpConnectionPtr &con) { con->send(con->getReadBuffer()); });
+            con->onRead([&](const TcpConnectionPtr &con) {
+                spdlog::info("Server onRead: {}", con->fd());
+                con->send(con->getReadBuffer());
+            });
         },
         "127.0.0.1", 9950, true);
     assert(ss != nullptr);
