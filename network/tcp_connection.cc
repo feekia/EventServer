@@ -10,7 +10,7 @@ void TcpConnection::handleRead(const TcpConnectionPtr &con) {
         int rd = 0;
         if (chan_->fd() >= 0) {
             rd = read(chan_->fd(), input_.end(), input_.space());
-            spdlog::debug("channel {} fd {} readed {} bytes", (long long)chan_->id(), chan_->fd(), rd);
+            spdlog::info("channel {} fd {} readed {} bytes", (long long)chan_->id(), chan_->fd(), rd);
         }
         if (rd == -1 && errno == EINTR) {
             continue;
@@ -115,6 +115,10 @@ void TcpConnection::attachIoOps(IoOps *ops) {
         idle_task_->onRun([=](IdleTaskPtr &t) { tcpcon->handleFreeTimeOut(tcpcon); });
         ops->addIdleTask(idle_task_);
     }
+    if (statecb_) {
+        state_ = kConnected;
+        statecb_(tcpcon);
+    }
 }
 
 void TcpConnection::cleanup(const TcpConnectionPtr &con) {
@@ -123,6 +127,7 @@ void TcpConnection::cleanup(const TcpConnectionPtr &con) {
     }
 
     if (statecb_) {
+        con->state_ = kClosed;
         statecb_(con);
     }
 
@@ -137,8 +142,8 @@ void TcpConnection::cleanup(const TcpConnectionPtr &con) {
 
 void TcpConnection::close() {
     TcpConnectionPtr con = shared_from_this();
-    ops_->sendAndWakeup([con](){
-        if(con->chan()!=nullptr){
+    ops_->sendAndWakeup([con]() {
+        if (con->chan() != nullptr) {
             con->chan()->close();
         }
     });

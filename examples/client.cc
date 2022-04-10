@@ -42,22 +42,31 @@ public:
 int main(int argc, char **args) {
     EventWorkGroup worker(2);
 
+    unordered_map<int64_t, TcpConnectionPtr> connectionPools;
     TcpClientPtr tcpclient = TcpClient::startClient(&worker, [&](const TcpConnectionPtr &con) {
+        connectionPools[con->fd()] = con;
         con->onState([&](const TcpConnectionPtr &con) {
             if (con->state() == TcpConnection::TcpState::kClosed) {
                 // clear connectionPools;
             }
+            if (con->state() == TcpConnection::TcpState::kConnected) {
+                // clear connectionPools;
+                Buffer buf;
+                buf.append("asdfasdf");
+                con->send(buf);
+            }
         });
-        con->onFreeTimeOut(40 * 1000, [&](const TcpConnectionPtr &con) { con->close(); });
-        con->onRead([&](const TcpConnectionPtr &con) { con->send(con->getReadBuffer()); });
-        Buffer buf;
-        buf.append("asdfasdf");
-        con->sendByOtherThread(std::move(buf));
+        con->onFreeTimeOut(40 * 1000, [&](const TcpConnectionPtr &con) {
+            spdlog::info("Client timeout {}, close !", con->fd());
+            con->close();
+        });
+        con->onRead([&](const TcpConnectionPtr &con) {
+            spdlog::info("Client onRead: {}", con->fd());
+            con->send(con->getReadBuffer());
+        });
     });
 
-    Signal::signal(SIGINT, [&] {
-        worker.exit();
-    });
+    Signal::signal(SIGINT, [&] { worker.exit(); });
 
     for (int i = 0; i < 5; i++) {
         int fd = TcpClientUtil::connect();
