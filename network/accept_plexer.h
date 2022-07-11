@@ -30,7 +30,7 @@ private:
     AcceptTask acceptcb_;
 
 public:
-    AcceptHandler(int lsfd) : lsfd_(lsfd), events_(EPOLLOUT) {}
+    AcceptHandler(int lsfd) : lsfd_(lsfd), events_(EPOLLIN) {}
     ~AcceptHandler() {
         if (lsfd_ >= 0) {
             ::close(lsfd_);

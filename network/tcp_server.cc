@@ -57,7 +57,7 @@ int TcpServer::bind(const std::string &host, unsigned short port, bool reusePort
 
     r = listen(listen_fd_, 60);
     assert(r == 0);
-    spdlog::info("fd {} listening at {}", listen_fd_, "address");
+    spdlog::info("fd {} listening", listen_fd_);
     return 0;
 }
 

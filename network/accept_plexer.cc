@@ -48,6 +48,7 @@ AcceptMultiPlexer::AcceptMultiPlexer(vector<EventLoop> *loops) : loops_(loops), 
 int AcceptMultiPlexer::waitTimeout(int64_t waitMs) {
     int cfd     = -1;
     int actives = epoll_wait(epollfd_, &activeEvs_, 1, waitMs);
+    spdlog::info("waitTimeout actives {} ", actives);
     if (actives > 0) {
         int events = activeEvs_.events;
         assert(static_cast<bool>((events & EPOLLIN) > 0));
@@ -55,14 +56,7 @@ int AcceptMultiPlexer::waitTimeout(int64_t waitMs) {
         socklen_t          rsz = sizeof(raddr);
 
         cfd = accept(acceptor->fd(), (struct sockaddr *)&raddr, &rsz);
-        spdlog::debug("Listen fd {} accept connection fd {} !", acceptor->fd(), cfd);
-        if (events & EPOLLIN) {
-            struct sockaddr_in raddr;
-            socklen_t          rsz = sizeof(raddr);
-
-            cfd = accept(acceptor->fd(), (struct sockaddr *)&raddr, &rsz);
-            spdlog::debug("Listen fd {} accept connection fd {} !", acceptor->fd(), cfd);
-        }
+        spdlog::info("Listen fd {} accept connection fd {} !", acceptor->fd(), cfd);
     }
     // spdlog::info("Listen exit !");
     return cfd;

@@ -17,6 +17,7 @@ int main(int argc, char **argv) {
     TcpServerPtr ss = TcpServer::startServer(
         &boss, &worker,
         [&](const TcpConnectionPtr &con) {
+            spdlog::info("Server accept: {}", con->fd());
             connectionPools[userid++] = con;
             con->onState([&](const TcpConnectionPtr &con) {
                 if (con->state() == TcpConnection::TcpState::kClosed) {
@@ -25,8 +26,8 @@ int main(int argc, char **argv) {
             });
             con->onFreeTimeOut(40 * 1000, [&](const TcpConnectionPtr &con) { con->close(); });
             con->onRead([&](const TcpConnectionPtr &con) {
-                spdlog::info("Server onRead: {}", con->fd());
-                con->send(con->getReadBuffer());
+                spdlog::info("Server onRead: {}, size{} ", con->fd(),con->getReadBuffer().size());
+                con->getReadBuffer().consume(con->getReadBuffer().size());
             });
         },
         "127.0.0.1", 9950, true);

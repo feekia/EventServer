@@ -44,6 +44,7 @@ int main(int argc, char **args) {
 
     unordered_map<int64_t, TcpConnectionPtr> connectionPools;
     TcpClientPtr tcpclient = TcpClient::startClient(&worker, [&](const TcpConnectionPtr &con) {
+        spdlog::info("connect finish fd: {} \n", con->fd());
         connectionPools[con->fd()] = con;
         con->onState([&](const TcpConnectionPtr &con) {
             if (con->state() == TcpConnection::TcpState::kClosed) {
@@ -69,7 +70,7 @@ int main(int argc, char **args) {
     Signal::signal(SIGINT, [&] { worker.exit(); });
 
     for (int i = 0; i < 5; i++) {
-        int fd = TcpClientUtil::connect();
+        int fd = TcpClientUtil::connect("127.0.0.1",9950);
         tcpclient->attach(fd);
     }
     worker.sync();
