@@ -2,7 +2,6 @@
 #include <memory>
 
 #include "handler.h"
-#include "message.h"
 
 using namespace std;
 using namespace es;
