@@ -2,12 +2,12 @@
 #include <chrono>
 #include <condition_variable>
 #include <functional>
+#include <iostream>
 #include <list>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <thread>
-#include <iostream>
 
 namespace es {
 class Message {
@@ -88,7 +88,9 @@ public:
 
         std::unique_lock<std::mutex> lock(_queue_lock);
         if (!_msg_list.empty())
-            _msg_list.remove_if([what](const Message &m) { return m.what == what; });
+            _msg_list.remove_if([what](const Message &m) {
+                return m.what == what;
+            });
     }
     void removeAlls() {
         std::unique_lock<std::mutex> lock(_queue_lock);
