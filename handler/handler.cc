@@ -14,10 +14,13 @@ void Handler::initLoop() {
             {
                 std::unique_lock<std::mutex> lock(_queue_lock);
                 if (_msg_list.empty()) {
-                    _cond.wait(lock, [this] { return _stoped || !_msg_list.empty(); });
+                    _cond.wait(lock, [this] {
+                        return _stoped || !_msg_list.empty();
+                    });
                 } else {
-                    _cond.wait_until(lock, _msg_list.front().when,
-                                     [this] { return _stoped || _msg_list.empty(); });
+                    _cond.wait_until(lock, _msg_list.front().when, [this] {
+                        return _stoped || _msg_list.empty();
+                    });
                 }
                 if (!_stoped && _msg_list.empty())
                     continue;
