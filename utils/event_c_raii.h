@@ -5,9 +5,6 @@
  *      Author: afreeliyunfeil@163.com
  */
 
-#ifndef _EVENT_RAII_H_
-#define _EVENT_RAII_H_
-
 #pragma once
 
 #include <event.h>
@@ -60,5 +57,3 @@ inline raii_evconnlistener obtain_evconnlistener(struct event_base *base, evconn
 inline raii_bufferevent obtain_bufferevent(struct event_base *base, evutil_socket_t fd, int options) {
     return raii_bufferevent(bufferevent_socket_new(base, fd, options));
 }
-
-#endif /* end of _EVENT_RAII_H_ */
